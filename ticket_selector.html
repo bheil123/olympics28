@@ -1007,9 +1007,8 @@ function exportPicks() {
       tsv += row.map(v => String(v).replace(/\t/g, ' ')).join('\t') + '\n';
     });
     const copyAndOpen = () => {
-      // Open a new Google Sheet (requires user to be logged into Google)
+      if (!confirm('Your picks are copied to the clipboard!\n\nA new Google Sheet will open in a new tab.\nClick cell A1, then press Ctrl+V (Cmd+V on Mac) to paste.\n\nClick OK to open Google Sheets now.')) return;
       window.open('https://docs.google.com/spreadsheets/create', '_blank');
-      alert('A new Google Sheet is opening in a new tab.\n\nClick cell A1, then press Ctrl+V (or Cmd+V) to paste your picks.');
     };
     navigator.clipboard.writeText(tsv).then(copyAndOpen).catch(() => {
       const ta = document.createElement('textarea');
