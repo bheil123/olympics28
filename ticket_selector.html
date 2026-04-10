@@ -484,7 +484,9 @@ function filterSessions(sessions, filters) {
     if (s.NotTicketed) return false;
     // Always show selected sessions regardless of filters
     if (selectedSessions.has(s.SessionCode)) return true;
-    if (filters.sports.length > 0 && !filters.sports.includes(s.Sport)) return false;
+    // If no sports checked, show nothing
+    if (filters.sports.length === 0) return false;
+    if (!filters.sports.includes(s.Sport)) return false;
     // Date range filter - check if session falls in ANY active range
     if (filters.dateRanges) {
       const iso = dateToISO(s.Date);
