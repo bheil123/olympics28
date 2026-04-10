@@ -123,12 +123,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
   <div style="display:flex; gap:15px;">
     <div class="ticket-counter" id="mainCounter">
-      <div class="count" id="mainCount">0</div>
-      <div class="label">of 6 Events (<span id="mainTixTotal">0</span> tix)</div>
+      <div class="count"><span id="mainTixTotal">0</span> / 12</div>
+      <div class="label">Event Tickets</div>
     </div>
     <div class="ticket-counter" id="footballCounter">
-      <div class="count" id="footballCount">0</div>
-      <div class="label">of 6 Football (<span id="fbTixTotal">0</span> tix)</div>
+      <div class="count"><span id="fbTixTotal">0</span> / 12</div>
+      <div class="label">Football Tickets</div>
     </div>
   </div>
 </div>
@@ -409,13 +409,15 @@ function timeToMin(t) {
 
 function toggleSession(code, isFootball) {
   const map = isFootball ? selectedFootball : selectedSessions;
-  const maxEvents = 6;
 
   if (map.has(code)) {
     map.delete(code);
   } else {
-    if (map.size >= maxEvents) {
-      alert(`Maximum ${maxEvents} ${isFootball ? 'football ' : ''}events reached! Remove one first.`);
+    let currentTotal = 0;
+    map.forEach(t => currentTotal += t);
+    const defaultTix = parseInt(document.getElementById('defaultTickets').value);
+    if (currentTotal + defaultTix > 12) {
+      alert(`Adding ${defaultTix} tickets would exceed the 12-ticket ${isFootball ? 'football ' : ''}limit (currently ${currentTotal}). Reduce tickets on other events or remove one first.`);
       return;
     }
     const conflicts = getConflicts(code);
@@ -423,7 +425,6 @@ function toggleSession(code, isFootball) {
       const names = conflicts.map(c => `${c.SessionCode} (${c.Sport} ${c.StartTime})`).join(', ');
       if (!confirm(`Time conflict with: ${names}. Select anyway?`)) return;
     }
-    const defaultTix = parseInt(document.getElementById('defaultTickets').value);
     map.set(code, defaultTix);
   }
   renderSessions();
@@ -432,7 +433,15 @@ function toggleSession(code, isFootball) {
 function updateTickets(code, isFootball, count) {
   const map = isFootball ? selectedFootball : selectedSessions;
   if (map.has(code)) {
-    map.set(code, parseInt(count));
+    const newCount = parseInt(count);
+    let otherTotal = 0;
+    map.forEach((t, c) => { if (c !== code) otherTotal += t; });
+    if (otherTotal + newCount > 12) {
+      alert(`Total would exceed 12 tickets. Currently ${otherTotal} tickets on other events.`);
+      renderSessions(); // reset the dropdown
+      return;
+    }
+    map.set(code, newCount);
     renderPicks();
     updateCounters();
   }
@@ -642,25 +651,21 @@ function renderPicks() {
 }
 
 function updateCounters() {
-  const mainCount = selectedSessions.size;
-  const fbCount = selectedFootball.size;
   let mainTixTotal = 0;
   selectedSessions.forEach(t => mainTixTotal += t);
   let fbTixTotal = 0;
   selectedFootball.forEach(t => fbTixTotal += t);
 
-  document.getElementById('mainCount').textContent = mainCount;
-  document.getElementById('footballCount').textContent = fbCount;
   document.getElementById('mainTixTotal').textContent = mainTixTotal;
   document.getElementById('fbTixTotal').textContent = fbTixTotal;
 
   const mc = document.getElementById('mainCounter');
-  mc.className = 'ticket-counter' + (mainCount >= 6 ? ' full' : mainCount >= 4 ? ' warning' : '');
+  mc.className = 'ticket-counter' + (mainTixTotal >= 12 ? ' full' : mainTixTotal >= 8 ? ' warning' : '');
 
   const fc = document.getElementById('footballCounter');
-  fc.className = 'ticket-counter' + (fbCount >= 6 ? ' full' : fbCount >= 4 ? ' warning' : '');
+  fc.className = 'ticket-counter' + (fbTixTotal >= 12 ? ' full' : fbTixTotal >= 8 ? ' warning' : '');
 
-  document.getElementById('fbPickCount').textContent = fbCount;
+  document.getElementById('fbPickCount').textContent = selectedFootball.size;
 }
 
 function switchTab(tab) {
