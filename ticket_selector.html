@@ -645,6 +645,9 @@ function renderSessions() {
   renderFootball();
   renderPicks();
   updateCounters();
+  // Re-render active tab if visible
+  if (document.getElementById('calendarTab')?.style.display !== 'none') renderCalendar();
+  if (document.getElementById('trackerTab')?.style.display !== 'none') renderTracker();
 }
 
 function renderFootball() {
