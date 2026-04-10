@@ -221,12 +221,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 <div class="main-layout">
   <div class="sidebar">
-    <div class="section-header">Filter by Sport</div>
-    <div class="sport-filter">
-      <label style="font-weight:700;">
-        <input type="checkbox" id="toggleAllSports" onchange="toggleAllSports(this.checked)">
-        Select All / None
-      </label>
+    <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+      Filter by Sport
+      <span>
+        <a href="#" onclick="toggleAllSports(true); return false;" style="font-size:0.8em; text-transform:none; font-weight:400;">All</a>
+        <span style="opacity:0.4;">|</span>
+        <a href="#" onclick="toggleAllSports(false); return false;" style="font-size:0.8em; text-transform:none; font-weight:400;">None</a>
+      </span>
     </div>
     <div id="sportFilters"></div>
 
