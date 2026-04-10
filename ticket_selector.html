@@ -967,13 +967,12 @@ function getExportData() {
   const allPicks = [...selectedSessions.keys(), ...selectedFootball.keys()];
   const sorted = allPicks.map(code => ALL_SESSIONS.find(s => s.SessionCode === code)).filter(Boolean)
     .sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
-  const headers = ['Event','Venue','Zone','Session Code','Date','Games Day','Session Type','Gender','Description','Start','End','Tickets','Purchaser'];
+  const headers = ['Event','Venue','Zone','Session Code','Date','Games Day','Session Type','Description','Start','End','Tickets','Purchaser'];
   const rows = sorted.map(s => {
     const isFB = s.Sport === 'Football (Soccer)';
     const t = isFB ? (selectedFootball.get(s.SessionCode) || 0) : (selectedSessions.get(s.SessionCode) || 0);
-    const g = s._gender === 'women' ? 'W' : s._gender === 'men' ? 'M' : s._gender === 'mixed' ? 'M/W' : '';
-    const desc = (s.Description || '').replace(/\|/g, ' / ').substring(0, 120);
-    return [s.Sport, s.Venue, s.Zone, s.SessionCode, s.Date, s.GamesDay, s.SessionType, g, desc, s.StartTime, s.EndTime, t, name];
+    const desc = (s.Description || '').replace(/\|/g, ' / ');
+    return [s.Sport, s.Venue, s.Zone, s.SessionCode, s.Date, s.GamesDay, s.SessionType, desc, s.StartTime, s.EndTime, t, name];
   });
   return { name, headers, rows, sorted };
 }
