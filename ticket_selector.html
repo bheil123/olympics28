@@ -346,11 +346,6 @@ function init() {
   // Try loading saved state from URL or localStorage
   const loaded = loadFromURL();
   if (!loaded) {
-    // Default sport selections for first-time users
-    const preselect = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Opening Ceremony', 'Opening Ceremony - Celebration', 'Closing Ceremony', 'Swimming'];
-    document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => {
-      if (preselect.some(s => cb.value === s)) cb.checked = true;
-    });
     updateRangeLabels();
     renderSessions();
   }
