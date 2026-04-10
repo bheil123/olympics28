@@ -197,6 +197,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <option value="women+mixed">Women's + Mixed</option>
     </select>
   </div>
+  <button class="btn btn-primary btn-sm" onclick="saveToURL()">Save to Link</button>
   <button class="btn btn-danger btn-sm" onclick="clearAll()">Clear All Picks</button>
   <button class="btn btn-success btn-sm" onclick="exportPicks()">Export Picks</button>
 </div>
@@ -314,12 +315,17 @@ function init() {
     s._gender = classifyGender(s.Description + ' ' + (s.Sport || ''));
   });
   buildSportFilters();
-  const preselect = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Opening Ceremony', 'Opening Ceremony - Celebration', 'Closing Ceremony', 'Swimming'];
-  document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => {
-    if (preselect.some(s => cb.value === s)) cb.checked = true;
-  });
-  updateRangeLabels();
-  renderSessions();
+  // Try loading saved state from URL or localStorage
+  const loaded = loadFromURL();
+  if (!loaded) {
+    // Default sport selections for first-time users
+    const preselect = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Opening Ceremony', 'Opening Ceremony - Celebration', 'Closing Ceremony', 'Swimming'];
+    document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => {
+      if (preselect.some(s => cb.value === s)) cb.checked = true;
+    });
+    updateRangeLabels();
+    renderSessions();
+  }
 }
 
 function parseDate(dateStr) {
@@ -877,6 +883,119 @@ function exportPicks() {
     alert('CSV downloaded! Quick reference:\n\n' + quick);
   });
 }
+
+// === SAVE / LOAD STATE ===
+
+function getState() {
+  const sports = Array.from(document.querySelectorAll('#sportFilters input:checked')).map(cb => cb.value);
+  const froms = Array.from(document.querySelectorAll('.range-from')).map(i => i.value);
+  const tos = Array.from(document.querySelectorAll('.range-to')).map(i => i.value);
+  const main = {};
+  selectedSessions.forEach((tix, code) => main[code] = tix);
+  const fb = {};
+  selectedFootball.forEach((tix, code) => fb[code] = tix);
+  const fbVenues = Array.from(document.querySelectorAll('input[name=fbVenue]:checked')).map(cb => cb.value);
+  return {
+    name: document.getElementById('purchaserName').value,
+    defTix: document.getElementById('defaultTickets').value,
+    sports,
+    froms, tos,
+    ranges: Array.from(activeRanges),
+    type: document.getElementById('sessionTypeFilter').value,
+    gender: document.getElementById('genderFilter').value,
+    main, fb, fbVenues
+  };
+}
+
+function applyState(state) {
+  if (!state) return false;
+  try {
+    if (state.name) document.getElementById('purchaserName').value = state.name;
+    if (state.defTix) document.getElementById('defaultTickets').value = state.defTix;
+    if (state.sports) {
+      document.querySelectorAll('#sportFilters input').forEach(cb => {
+        cb.checked = state.sports.includes(cb.value);
+      });
+    }
+    if (state.froms && state.tos) {
+      const froms = document.querySelectorAll('.range-from');
+      const tos = document.querySelectorAll('.range-to');
+      state.froms.forEach((v, i) => { if (froms[i]) froms[i].value = v; });
+      state.tos.forEach((v, i) => { if (tos[i]) tos[i].value = v; });
+    }
+    if (state.ranges) activeRanges = new Set(state.ranges);
+    if (state.type) document.getElementById('sessionTypeFilter').value = state.type;
+    if (state.gender) document.getElementById('genderFilter').value = state.gender;
+    if (state.main) {
+      selectedSessions = new Map();
+      Object.entries(state.main).forEach(([code, tix]) => selectedSessions.set(code, tix));
+    }
+    if (state.fb) {
+      selectedFootball = new Map();
+      Object.entries(state.fb).forEach(([code, tix]) => selectedFootball.set(code, tix));
+    }
+    if (state.fbVenues) {
+      document.querySelectorAll('input[name=fbVenue]').forEach(cb => {
+        cb.checked = state.fbVenues.includes(cb.value);
+      });
+    }
+    updateRangeLabels();
+    renderSessions();
+    return true;
+  } catch(e) {
+    console.error('Failed to apply state', e);
+    return false;
+  }
+}
+
+function saveToURL() {
+  const state = getState();
+  const encoded = btoa(JSON.stringify(state));
+  const url = window.location.origin + window.location.pathname + '#' + encoded;
+  history.replaceState(null, '', '#' + encoded);
+  // Also save to localStorage
+  localStorage.setItem('olympics28_state', JSON.stringify(state));
+  // Copy URL to clipboard
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Link copied to clipboard! Bookmark it or share with family.\n\nYour selections are saved in this link.');
+  }).catch(() => {
+    prompt('Copy this link to save your selections:', url);
+  });
+}
+
+function autoSave() {
+  const state = getState();
+  localStorage.setItem('olympics28_state', JSON.stringify(state));
+}
+
+function loadFromURL() {
+  const hash = window.location.hash.slice(1);
+  if (hash) {
+    try {
+      const state = JSON.parse(atob(hash));
+      return applyState(state);
+    } catch(e) {
+      console.log('Invalid URL state, trying localStorage');
+    }
+  }
+  // Fallback to localStorage
+  const saved = localStorage.getItem('olympics28_state');
+  if (saved) {
+    try {
+      return applyState(JSON.parse(saved));
+    } catch(e) {
+      console.log('Invalid localStorage state');
+    }
+  }
+  return false;
+}
+
+// Auto-save on every change
+const _origRender = renderSessions;
+renderSessions = function() {
+  _origRender();
+  autoSave();
+};
 
 // Listen for filter changes
 document.getElementById('sessionTypeFilter').addEventListener('change', renderSessions);
