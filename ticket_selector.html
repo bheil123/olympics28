@@ -554,6 +554,8 @@ function updateTickets(code, isFootball, count) {
     map.set(code, newCount);
     renderPicks();
     updateCounters();
+    renderCalendar();
+    renderTracker();
   }
 }
 
@@ -645,9 +647,9 @@ function renderSessions() {
   renderFootball();
   renderPicks();
   updateCounters();
-  // Re-render active tab if visible
-  if (document.getElementById('calendarTab')?.style.display !== 'none') renderCalendar();
-  if (document.getElementById('trackerTab')?.style.display !== 'none') renderTracker();
+  // Always re-render calendar and tracker so they stay in sync
+  renderCalendar();
+  renderTracker();
 }
 
 function renderFootball() {
