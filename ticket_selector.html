@@ -154,15 +154,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     </select>
   </div>
   <div class="control-group">
-    <label>Date Range</label>
-    <div style="display:flex; gap:4px;">
-      <input type="date" id="dateFrom" value="2028-07-14" style="width:130px;">
-      <input type="date" id="dateTo" value="2028-07-30" style="width:130px;">
+    <label>Custom Date Ranges (define up to 3)</label>
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <div style="display:flex; align-items:center; gap:4px;">
+        <input type="date" class="range-from" value="2028-07-14" style="width:125px;" onchange="updateRangeLabels()">
+        <span style="font-size:0.8em;">to</span>
+        <input type="date" class="range-to" value="2028-07-21" style="width:125px;" onchange="updateRangeLabels()">
+      </div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <input type="date" class="range-from" value="" style="width:125px;" onchange="updateRangeLabels()">
+        <span style="font-size:0.8em;">to</span>
+        <input type="date" class="range-to" value="" style="width:125px;" onchange="updateRangeLabels()">
+      </div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <input type="date" class="range-from" value="" style="width:125px;" onchange="updateRangeLabels()">
+        <span style="font-size:0.8em;">to</span>
+        <input type="date" class="range-to" value="" style="width:125px;" onchange="updateRangeLabels()">
+      </div>
     </div>
   </div>
   <div class="control-group">
+    <label>Active Ranges</label>
+    <div class="quick-picks" id="rangePresets"></div>
+  </div>
+  <div class="control-group">
     <label>Session Type</label>
-    <select id="sessionTypeFilter">
+    <select id="sessionTypeFilter" onchange="renderSessions()">
       <option value="all">All Types</option>
       <option value="Final">Finals / Medal</option>
       <option value="Preliminary">Preliminary</option>
@@ -179,15 +196,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <option value="mixed">Mixed / Both</option>
       <option value="women+mixed">Women's + Mixed</option>
     </select>
-  </div>
-  <div class="control-group">
-    <label>Quick Presets</label>
-    <div class="quick-picks">
-      <span class="quick-pick" onclick="applyPreset('week1')">7/14-21</span>
-      <span class="quick-pick" onclick="applyPreset('week2')">7/22-30</span>
-      <span class="quick-pick" onclick="applyPreset('finals')">Medal Events</span>
-      <span class="quick-pick" onclick="applyPreset('all')">All Dates</span>
-    </div>
   </div>
   <button class="btn btn-danger btn-sm" onclick="clearAll()">Clear All Picks</button>
   <button class="btn btn-success btn-sm" onclick="exportPicks()">Export Picks</button>
@@ -310,6 +318,7 @@ function init() {
   document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => {
     if (preselect.some(s => cb.value === s)) cb.checked = true;
   });
+  updateRangeLabels();
   renderSessions();
 }
 
@@ -350,13 +359,81 @@ function getSelectedSports() {
   return Array.from(document.querySelectorAll('#sportFilters input:checked')).map(cb => cb.value);
 }
 
+// Track which range presets are active (by index, or 'all')
+let activeRanges = new Set(['all']);
+
+function getDefinedRanges() {
+  const froms = document.querySelectorAll('.range-from');
+  const tos = document.querySelectorAll('.range-to');
+  const ranges = [];
+  for (let i = 0; i < froms.length; i++) {
+    if (froms[i].value && tos[i].value) {
+      ranges.push({ from: froms[i].value, to: tos[i].value, index: i });
+    }
+  }
+  return ranges;
+}
+
+function formatRangeLabel(from, to) {
+  const f = new Date(from + 'T00:00:00');
+  const t = new Date(to + 'T00:00:00');
+  return `${f.getMonth()+1}/${f.getDate()}-${t.getMonth()+1}/${t.getDate()}`;
+}
+
+function updateRangeLabels() {
+  const ranges = getDefinedRanges();
+  const container = document.getElementById('rangePresets');
+  let html = '';
+  ranges.forEach((r, i) => {
+    const label = formatRangeLabel(r.from, r.to);
+    const isActive = activeRanges.has(String(r.index));
+    html += `<span class="quick-pick ${isActive ? 'active' : ''}" onclick="toggleRange('${r.index}')">${label}</span>`;
+  });
+  const allActive = activeRanges.has('all');
+  html += `<span class="quick-pick ${allActive ? 'active' : ''}" onclick="toggleRange('all')">All Dates</span>`;
+  container.innerHTML = html;
+}
+
+function toggleRange(key) {
+  if (key === 'all') {
+    // If turning on "all", clear other selections
+    if (activeRanges.has('all')) {
+      activeRanges.delete('all');
+    } else {
+      activeRanges = new Set(['all']);
+    }
+  } else {
+    activeRanges.delete('all');
+    if (activeRanges.has(key)) {
+      activeRanges.delete(key);
+    } else {
+      activeRanges.add(key);
+    }
+    // If nothing selected, default to all
+    if (activeRanges.size === 0) activeRanges.add('all');
+  }
+  updateRangeLabels();
+  renderSessions();
+}
+
+function getActiveDateRanges() {
+  if (activeRanges.has('all')) return null; // no filtering
+  const defined = getDefinedRanges();
+  const ranges = [];
+  activeRanges.forEach(key => {
+    const idx = parseInt(key);
+    const r = defined.find(d => d.index === idx);
+    if (r) ranges.push(r);
+  });
+  return ranges.length > 0 ? ranges : null;
+}
+
 function getFilters() {
   const sports = getSelectedSports();
-  const dateFrom = document.getElementById('dateFrom').value;
-  const dateTo = document.getElementById('dateTo').value;
+  const dateRanges = getActiveDateRanges();
   const sessionType = document.getElementById('sessionTypeFilter').value;
   const gender = document.getElementById('genderFilter').value;
-  return { sports, dateFrom, dateTo, sessionType, gender };
+  return { sports, dateRanges, sessionType, gender };
 }
 
 function filterSessions(sessions, filters) {
@@ -364,11 +441,13 @@ function filterSessions(sessions, filters) {
     if (s.Sport === 'Football (Soccer)') return false;
     if (s.NotTicketed) return false;
     if (filters.sports.length > 0 && !filters.sports.includes(s.Sport)) return false;
-    const iso = dateToISO(s.Date);
-    if (filters.dateFrom && iso < filters.dateFrom) return false;
-    if (filters.dateTo && iso > filters.dateTo) return false;
+    // Date range filter - check if session falls in ANY active range
+    if (filters.dateRanges) {
+      const iso = dateToISO(s.Date);
+      const inRange = filters.dateRanges.some(r => iso >= r.from && iso <= r.to);
+      if (!inRange) return false;
+    }
     if (filters.sessionType !== 'all' && s.SessionType !== filters.sessionType) return false;
-    // Gender filter - "unknown" always passes (ceremonies etc.)
     if (filters.gender !== 'all' && s._gender !== 'unknown') {
       if (filters.gender === 'women' && s._gender !== 'women') return false;
       if (filters.gender === 'men' && s._gender !== 'men') return false;
@@ -737,27 +816,7 @@ function renderTracker() {
   document.getElementById('trackerTab').innerHTML = html;
 }
 
-function applyPreset(preset) {
-  if (preset === 'week1') {
-    document.getElementById('dateFrom').value = '2028-07-14';
-    document.getElementById('dateTo').value = '2028-07-21';
-  } else if (preset === 'week2') {
-    document.getElementById('dateFrom').value = '2028-07-22';
-    document.getElementById('dateTo').value = '2028-07-30';
-  } else if (preset === 'finals') {
-    document.getElementById('dateFrom').value = '2028-07-14';
-    document.getElementById('dateTo').value = '2028-07-30';
-    document.getElementById('sessionTypeFilter').value = 'Final';
-    document.querySelectorAll('#sportFilters input').forEach(cb => {
-      cb.checked = ['Artistic Gymnastics', 'Athletics (Track & Field)'].includes(cb.value);
-    });
-  } else if (preset === 'all') {
-    document.getElementById('dateFrom').value = '2028-07-10';
-    document.getElementById('dateTo').value = '2028-07-30';
-    document.getElementById('sessionTypeFilter').value = 'all';
-  }
-  renderSessions();
-}
+// applyPreset removed - replaced by toggleRange
 
 function clearAll() {
   if (!confirm('Clear all selections?')) return;
@@ -820,8 +879,6 @@ function exportPicks() {
 }
 
 // Listen for filter changes
-document.getElementById('dateFrom').addEventListener('change', renderSessions);
-document.getElementById('dateTo').addEventListener('change', renderSessions);
 document.getElementById('sessionTypeFilter').addEventListener('change', renderSessions);
 document.getElementById('defaultTickets').addEventListener('change', () => {});
 </script>
