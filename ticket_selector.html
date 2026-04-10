@@ -221,7 +221,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 <div class="main-layout">
   <div class="sidebar">
-    <div class="section-header">Filter by Sport</div>
+    <div class="section-header" style="display:flex; align-items:center; justify-content:space-between;">Filter by Sport <label style="font-size:0.85em; font-weight:400; text-transform:none; cursor:pointer;"><input type="checkbox" id="toggleAllSports" onchange="toggleAllSports(this.checked)"> All</label></div>
     <div id="sportFilters"></div>
 
     <div class="section-header" style="margin-top:15px;">Your Picks (<span id="pickCount">0</span>)</div>
@@ -380,6 +380,11 @@ function buildSportFilters() {
       </label>
     </div>
   `).join('');
+}
+
+function toggleAllSports(checked) {
+  document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => cb.checked = checked);
+  renderSessions();
 }
 
 function getSelectedSports() {
