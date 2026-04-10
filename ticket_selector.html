@@ -471,6 +471,8 @@ function filterSessions(sessions, filters) {
   return sessions.filter(s => {
     if (s.Sport === 'Football (Soccer)') return false;
     if (s.NotTicketed) return false;
+    // Always show selected sessions regardless of filters
+    if (selectedSessions.has(s.SessionCode)) return true;
     if (filters.sports.length > 0 && !filters.sports.includes(s.Sport)) return false;
     // Date range filter - check if session falls in ANY active range
     if (filters.dateRanges) {
