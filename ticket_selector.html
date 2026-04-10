@@ -314,7 +314,7 @@ function init() {
     s._gender = classifyGender(s.Description + ' ' + (s.Sport || ''));
   });
   buildSportFilters();
-  const preselect = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Opening Ceremony', 'Opening Ceremony - Celebration', 'Closing Ceremony', 'Swimming', 'Diving', 'Basketball'];
+  const preselect = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Opening Ceremony', 'Opening Ceremony - Celebration', 'Closing Ceremony', 'Swimming'];
   document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => {
     if (preselect.some(s => cb.value === s)) cb.checked = true;
   });
