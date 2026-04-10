@@ -73,7 +73,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .type-semifinal { background: #17a2b8; color: white; }
 .type-quarterfinal { background: #6f42c1; color: white; }
 
-.range-day { padding: 2px 0px 2px 2px; font-size: 0.8em; border: 1px solid #ccc; border-radius: 4px; width: 42px; -webkit-appearance: none; -moz-appearance: none; appearance: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23666'/%3E%3C/svg%3E") no-repeat right 3px center/8px 5px, white; }
+.range-day { padding: 2px 4px; font-size: 0.8em; border: 1px solid #ccc; border-radius: 4px; width: 32px; text-align: center; font-weight: 600; -moz-appearance: textfield; }
+.range-day::-webkit-outer-spin-button, .range-day::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .range-group { display: flex; align-items: center; gap: 2px; border: 1px solid #ddd; border-radius: 4px; padding: 2px 5px; background: #fafafa; }
 .range-num { font-size: 0.7em; font-weight: 700; color: #1a3a5c; margin-right: 2px; }
 .tix-select { width: 44px; padding: 2px 2px; font-size: 0.8em; border: 1px solid #aaa; border-radius: 3px; text-align: center; background: #fff; font-weight: 700; color: #1a3a5c; }
@@ -173,21 +174,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
       <div class="range-group">
         <span class="range-num">1</span><span style="font-size:0.7em;">Jul</span>
-        <select class="range-day range-from" data-default="10" onchange="updateRangeLabels()"></select>
+        <input type="number" class="range-day range-from" min="10" max="30" value="10" onchange="updateRangeLabels()">
         <span style="font-size:0.7em;">-</span>
-        <select class="range-day range-to" data-default="16" onchange="updateRangeLabels()"></select>
+        <input type="number" class="range-day range-to" min="10" max="30" value="16" onchange="updateRangeLabels()">
       </div>
       <div class="range-group">
         <span class="range-num">2</span><span style="font-size:0.7em;">Jul</span>
-        <select class="range-day range-from" data-default="17" onchange="updateRangeLabels()"></select>
+        <input type="number" class="range-day range-from" min="10" max="30" value="17" onchange="updateRangeLabels()">
         <span style="font-size:0.7em;">-</span>
-        <select class="range-day range-to" data-default="23" onchange="updateRangeLabels()"></select>
+        <input type="number" class="range-day range-to" min="10" max="30" value="23" onchange="updateRangeLabels()">
       </div>
       <div class="range-group">
         <span class="range-num">3</span><span style="font-size:0.7em;">Jul</span>
-        <select class="range-day range-from" data-default="24" onchange="updateRangeLabels()"></select>
+        <input type="number" class="range-day range-from" min="10" max="30" value="24" onchange="updateRangeLabels()">
         <span style="font-size:0.7em;">-</span>
-        <select class="range-day range-to" data-default="30" onchange="updateRangeLabels()"></select>
+        <input type="number" class="range-day range-to" min="10" max="30" value="30" onchange="updateRangeLabels()">
       </div>
       <div class="quick-picks" id="rangePresets" style="display:flex; align-items:center;"></div>
       <select id="sessionTypeFilter" onchange="renderSessions()" style="padding:3px 6px; font-size:0.8em; border:1px solid #ccc; border-radius:4px;">
@@ -334,7 +335,6 @@ function init() {
   ALL_SESSIONS.forEach(s => {
     s._gender = classifyGender(s.Description + ' ' + (s.Sport || ''));
   });
-  initDaySelectors();
   buildSportFilters();
   // Try loading saved state from URL or localStorage
   const loaded = loadFromURL();
@@ -388,17 +388,6 @@ function getSelectedSports() {
 
 // Track which range presets are active (by index, or 'all')
 let activeRanges = new Set(['all']);
-
-function initDaySelectors() {
-  document.querySelectorAll('.range-day').forEach(sel => {
-    const def = sel.dataset.default;
-    let html = '<option value="">--</option>';
-    for (let d = 10; d <= 30; d++) {
-      html += `<option value="${d}" ${d == def ? 'selected' : ''}>${d}</option>`;
-    }
-    sel.innerHTML = html;
-  });
-}
 
 function getDefinedRanges() {
   const froms = document.querySelectorAll('.range-from');
