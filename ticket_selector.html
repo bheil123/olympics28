@@ -183,7 +183,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div class="control-group">
     <label>Quick Presets</label>
     <div class="quick-picks">
-      <span class="quick-pick" onclick="applyPreset('bill')">Bill (7/18-21)</span>
+      <span class="quick-pick" onclick="applyPreset('week1')">7/14-21</span>
+      <span class="quick-pick" onclick="applyPreset('week2')">7/22-30</span>
       <span class="quick-pick" onclick="applyPreset('finals')">Medal Events</span>
       <span class="quick-pick" onclick="applyPreset('all')">All Dates</span>
     </div>
@@ -732,13 +733,12 @@ function renderTracker() {
 }
 
 function applyPreset(preset) {
-  if (preset === 'bill') {
-    document.getElementById('dateFrom').value = '2028-07-18';
+  if (preset === 'week1') {
+    document.getElementById('dateFrom').value = '2028-07-14';
     document.getElementById('dateTo').value = '2028-07-21';
-    // Check Artistic Gymnastics, Athletics
-    document.querySelectorAll('#sportFilters input').forEach(cb => {
-      cb.checked = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Swimming', 'Diving'].includes(cb.value);
-    });
+  } else if (preset === 'week2') {
+    document.getElementById('dateFrom').value = '2028-07-22';
+    document.getElementById('dateTo').value = '2028-07-30';
   } else if (preset === 'finals') {
     document.getElementById('dateFrom').value = '2028-07-14';
     document.getElementById('dateTo').value = '2028-07-30';
