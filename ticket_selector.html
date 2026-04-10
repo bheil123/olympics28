@@ -1006,17 +1006,19 @@ function exportPicks() {
     rows.forEach(row => {
       tsv += row.map(v => String(v).replace(/\t/g, ' ')).join('\t') + '\n';
     });
-    navigator.clipboard.writeText(tsv).then(() => {
-      alert('Copied to clipboard! Open Google Sheets and press Ctrl+V (or Cmd+V) to paste. It will auto-split into columns.');
-    }).catch(() => {
-      // Fallback: show in a textarea
+    const copyAndOpen = () => {
+      // Open a new Google Sheet (requires user to be logged into Google)
+      window.open('https://docs.google.com/spreadsheets/create', '_blank');
+      alert('A new Google Sheet is opening in a new tab.\n\nClick cell A1, then press Ctrl+V (or Cmd+V) to paste your picks.');
+    };
+    navigator.clipboard.writeText(tsv).then(copyAndOpen).catch(() => {
       const ta = document.createElement('textarea');
       ta.value = tsv;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      alert('Copied to clipboard! Open Google Sheets and paste.');
+      copyAndOpen();
     });
   }
 
