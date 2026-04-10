@@ -72,6 +72,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .type-semifinal { background: #17a2b8; color: white; }
 .type-quarterfinal { background: #6f42c1; color: white; }
 
+.tix-select { width: 44px; padding: 2px 2px; font-size: 0.8em; border: 1px solid #aaa; border-radius: 3px; text-align: center; background: #fff; font-weight: 700; color: #1a3a5c; }
+.tix-label { font-size: 0.7em; color: #666; margin-right: 2px; }
+.tix-wrapper { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+
 .gender-tag { display: inline-block; font-size: 0.65em; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
 .gender-women { background: #fce4ec; color: #c2185b; border: 1px solid #f48fb1; }
 .gender-men { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
@@ -133,23 +137,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div class="family-member">
     <label style="font-size:0.8em; font-weight:600;">Purchaser:</label>
     <input type="text" id="purchaserName" placeholder="Your name" value="Bill">
-    <label style="font-size:0.8em; font-weight:600; margin-left:10px;">Tix/Event:</label>
-    <select id="ticketsPerEvent">
-      <option value="1">1</option>
-      <option value="2" selected>2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-      <option value="7">7</option>
-      <option value="8">8</option>
-      <option value="9">9</option>
-      <option value="10">10</option>
-      <option value="11">11</option>
-      <option value="12">12</option>
-    </select>
-    <label style="font-size:0.8em; font-weight:600; margin-left:10px;">Tix/Football Game:</label>
-    <select id="ticketsPerFootball">
+    <label style="font-size:0.8em; font-weight:600; margin-left:10px;">Default Tix (new picks):</label>
+    <select id="defaultTickets">
       <option value="1">1</option>
       <option value="2" selected>2</option>
       <option value="3">3</option>
@@ -241,8 +230,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <script>
 // DATA WILL BE INJECTED HERE
 let ALL_SESSIONS = [];
-let selectedSessions = new Set();
-let selectedFootball = new Set();
+let selectedSessions = new Map(); // code -> ticketCount
+let selectedFootball = new Map(); // code -> ticketCount
 
 // Load data
 fetch('all_sessions.json')
@@ -394,7 +383,7 @@ function getConflicts(sessionCode) {
   const session = ALL_SESSIONS.find(s => s.SessionCode === sessionCode);
   if (!session) return [];
   const conflicts = [];
-  const allSelected = new Set([...selectedSessions, ...selectedFootball]);
+  const allSelected = new Set([...selectedSessions.keys(), ...selectedFootball.keys()]);
   allSelected.forEach(code => {
     if (code === sessionCode) return;
     const other = ALL_SESSIONS.find(s => s.SessionCode === code);
@@ -418,25 +407,42 @@ function timeToMin(t) {
 }
 
 function toggleSession(code, isFootball) {
-  const set = isFootball ? selectedFootball : selectedSessions;
+  const map = isFootball ? selectedFootball : selectedSessions;
   const maxEvents = 6;
 
-  if (set.has(code)) {
-    set.delete(code);
+  if (map.has(code)) {
+    map.delete(code);
   } else {
-    if (set.size >= maxEvents) {
+    if (map.size >= maxEvents) {
       alert(`Maximum ${maxEvents} ${isFootball ? 'football ' : ''}events reached! Remove one first.`);
       return;
     }
-    // Check for conflicts
     const conflicts = getConflicts(code);
     if (conflicts.length > 0) {
       const names = conflicts.map(c => `${c.SessionCode} (${c.Sport} ${c.StartTime})`).join(', ');
       if (!confirm(`Time conflict with: ${names}. Select anyway?`)) return;
     }
-    set.add(code);
+    const defaultTix = parseInt(document.getElementById('defaultTickets').value);
+    map.set(code, defaultTix);
   }
   renderSessions();
+}
+
+function updateTickets(code, isFootball, count) {
+  const map = isFootball ? selectedFootball : selectedSessions;
+  if (map.has(code)) {
+    map.set(code, parseInt(count));
+    renderPicks();
+    updateCounters();
+  }
+}
+
+function tixOptions(selected) {
+  let html = '';
+  for (let i = 1; i <= 12; i++) {
+    html += `<option value="${i}" ${i === selected ? 'selected' : ''}>${i}</option>`;
+  }
+  return html;
 }
 
 function renderSessions() {
@@ -473,6 +479,7 @@ function renderSessions() {
 
     sessions.forEach(s => {
       const isSelected = selectedSessions.has(s.SessionCode);
+      const tixCount = selectedSessions.get(s.SessionCode) || 0;
       const conflicts = getConflicts(s.SessionCode);
       const hasConflict = !isSelected && conflicts.length > 0;
       const isMedal = s.SessionType === 'Final' || s.SessionType === 'Bronze';
@@ -489,6 +496,7 @@ function renderSessions() {
                         s.SessionType === 'Quarterfinal' ? 'type-quarterfinal' : 'type-preliminary';
 
       const desc = s.Description.replace(/\|/g, ' / ').substring(0, 120);
+      const tixSelector = isSelected ? `<div class="tix-wrapper" onclick="event.stopPropagation()"><span class="tix-label">tix:</span><select class="tix-select" onchange="updateTickets('${s.SessionCode}', false, this.value)">${tixOptions(tixCount)}</select></div>` : '';
 
       html += `<div class="${classes}" onclick="toggleSession('${s.SessionCode}', false)">
         <input type="checkbox" class="session-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSession('${s.SessionCode}', false)">
@@ -500,7 +508,10 @@ function renderSessions() {
               ${genderTag(gender)}
               <span class="session-type ${typeClass}">${s.SessionType}</span>
             </div>
-            <span class="session-time">${s.StartTime} - ${s.EndTime}</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${tixSelector}
+              <span class="session-time">${s.StartTime} - ${s.EndTime}</span>
+            </div>
           </div>
           <div class="session-venue">${s.Venue} (${s.Zone})</div>
           <div class="session-desc">${desc}</div>
@@ -537,8 +548,8 @@ function renderFootball() {
     return da - db || (a.StartTime || '').localeCompare(b.StartTime || '');
   });
 
-  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
-  let html = `<h3 style="margin-bottom:10px;">Football (Soccer) - Separate pool (6 events x ${fbTix} tickets = ${6*fbTix} max)</h3>`;
+  let fbTixTotal = 0; selectedFootball.forEach(t => fbTixTotal += t);
+  let html = `<h3 style="margin-bottom:10px;">Football (Soccer) - Separate pool (6 events max, ${fbTixTotal} tickets selected)</h3>`;
 
   if (football.length === 0) {
     html += '<div class="no-results">No football sessions at selected venue.</div>';
@@ -556,12 +567,14 @@ function renderFootball() {
     html += `<div class="day-group"><div class="day-header"><span class="date">${date}, 2028</span><span class="games-day">Day ${sessions[0].GamesDay}</span></div>`;
     sessions.forEach(s => {
       const isSelected = selectedFootball.has(s.SessionCode);
+      const fbTixCount = selectedFootball.get(s.SessionCode) || 0;
       const isMedal = s.SessionType === 'Final' || s.SessionType === 'Bronze';
       let classes = 'session-card';
       if (isSelected) classes += ' selected';
       if (isMedal) classes += ' medal';
 
       const fbGender = s._gender || 'unknown';
+      const fbTixSelector = isSelected ? `<div class="tix-wrapper" onclick="event.stopPropagation()"><span class="tix-label">tix:</span><select class="tix-select" onchange="updateTickets('${s.SessionCode}', true, this.value)">${tixOptions(fbTixCount)}</select></div>` : '';
       html += `<div class="${classes}" onclick="toggleSession('${s.SessionCode}', true)">
         <input type="checkbox" class="session-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSession('${s.SessionCode}', true)">
         <div class="session-info">
@@ -572,7 +585,10 @@ function renderFootball() {
               ${genderTag(fbGender)}
               <span class="session-type ${s.SessionType === 'Final' ? 'type-final' : 'type-preliminary'}">${s.SessionType}</span>
             </div>
-            <span class="session-time">${s.StartTime} - ${s.EndTime}</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${fbTixSelector}
+              <span class="session-time">${s.StartTime} - ${s.EndTime}</span>
+            </div>
           </div>
           <div class="session-desc">${s.Description.replace(/\|/g, ' / ').substring(0, 100)}</div>
         </div>
@@ -586,18 +602,16 @@ function renderFootball() {
 
 function renderPicks() {
   const container = document.getElementById('picksList');
-  const tix = parseInt(document.getElementById('ticketsPerEvent').value);
   let html = '';
 
-  // Main picks
   if (selectedSessions.size > 0) {
     html += '<div style="font-size:0.75em; font-weight:600; color:#1a3a5c; margin:6px 0;">Main Events:</div>';
-    selectedSessions.forEach(code => {
+    selectedSessions.forEach((tix, code) => {
       const s = ALL_SESSIONS.find(x => x.SessionCode === code);
       if (!s) return;
       html += `<div class="pick-item">
         <div>
-          <strong>${s.SessionCode}</strong> ${s.Sport}<br>
+          <strong>${s.SessionCode}</strong> x${tix} ${s.Sport}<br>
           <span style="color:#777; font-size:0.9em;">${s.Date} ${s.StartTime}</span>
         </div>
         <span class="pick-remove" onclick="toggleSession('${code}', false)">X</span>
@@ -605,15 +619,14 @@ function renderPicks() {
     });
   }
 
-  // Football picks
   if (selectedFootball.size > 0) {
     html += '<div style="font-size:0.75em; font-weight:600; color:#1a3a5c; margin:6px 0;">Football:</div>';
-    selectedFootball.forEach(code => {
+    selectedFootball.forEach((tix, code) => {
       const s = ALL_SESSIONS.find(x => x.SessionCode === code);
       if (!s) return;
       html += `<div class="pick-item">
         <div>
-          <strong>${s.SessionCode}</strong> ${s.Venue}<br>
+          <strong>${s.SessionCode}</strong> x${tix} ${s.Venue}<br>
           <span style="color:#777; font-size:0.9em;">${s.Date} ${s.StartTime}</span>
         </div>
         <span class="pick-remove" onclick="toggleSession('${code}', true)">X</span>
@@ -628,15 +641,17 @@ function renderPicks() {
 }
 
 function updateCounters() {
-  const mainTix = parseInt(document.getElementById('ticketsPerEvent').value);
-  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
   const mainCount = selectedSessions.size;
   const fbCount = selectedFootball.size;
+  let mainTixTotal = 0;
+  selectedSessions.forEach(t => mainTixTotal += t);
+  let fbTixTotal = 0;
+  selectedFootball.forEach(t => fbTixTotal += t);
 
   document.getElementById('mainCount').textContent = mainCount;
   document.getElementById('footballCount').textContent = fbCount;
-  document.getElementById('mainTixTotal').textContent = mainCount * mainTix;
-  document.getElementById('fbTixTotal').textContent = fbCount * fbTix;
+  document.getElementById('mainTixTotal').textContent = mainTixTotal;
+  document.getElementById('fbTixTotal').textContent = fbTixTotal;
 
   const mc = document.getElementById('mainCounter');
   mc.className = 'ticket-counter' + (mainCount >= 6 ? ' full' : mainCount >= 4 ? ' warning' : '');
@@ -660,9 +675,7 @@ function switchTab(tab) {
 
 function renderTracker() {
   const name = document.getElementById('purchaserName').value || 'Family Member';
-  const mainTix = parseInt(document.getElementById('ticketsPerEvent').value);
-  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
-  const allPicks = [...selectedSessions, ...selectedFootball];
+  const allPicks = [...selectedSessions.keys(), ...selectedFootball.keys()];
 
   let html = `<h3 style="margin-bottom:10px;">HEIL FAMILY OLYMPICS TICKET TRACKER - ${name}</h3>`;
   html += `<table style="width:100%; border-collapse:collapse; font-size:0.82em;">
@@ -687,7 +700,7 @@ function renderTracker() {
   sorted.forEach((s, i) => {
     const bg = i % 2 === 0 ? '#fff' : '#f8f9fa';
     const isFB = s.Sport === 'Football (Soccer)';
-    const tixForThis = isFB ? fbTix : mainTix;
+    const tixForThis = isFB ? (selectedFootball.get(s.SessionCode) || 0) : (selectedSessions.get(s.SessionCode) || 0);
     const gender = s._gender || 'unknown';
     const genderLabel = gender === 'women' ? 'W' : gender === 'men' ? 'M' : gender === 'mixed' ? 'M/W' : '';
     html += `<tr style="background:${bg}; border-bottom:1px solid #eee;">
@@ -706,12 +719,12 @@ function renderTracker() {
     </tr>`;
   });
 
-  const mainTotal = selectedSessions.size * mainTix;
-  const fbTotal = selectedFootball.size * fbTix;
+  let mainTotal = 0; selectedSessions.forEach(t => mainTotal += t);
+  let fbTotal = 0; selectedFootball.forEach(t => fbTotal += t);
   html += `</tbody></table>`;
   html += `<div style="margin-top:15px; padding:10px; background:#f0f0f0; border-radius:4px;">
-    <strong>Summary:</strong> ${selectedSessions.size} main events x ${mainTix} tickets = ${mainTotal} tickets |
-    ${selectedFootball.size} football events x ${fbTix} tickets = ${fbTotal} tickets |
+    <strong>Summary:</strong> ${selectedSessions.size} main events (${mainTotal} tickets) |
+    ${selectedFootball.size} football events (${fbTotal} tickets) |
     <strong>Grand Total: ${mainTotal + fbTotal} tickets</strong>
   </div>`;
 
@@ -743,16 +756,14 @@ function applyPreset(preset) {
 
 function clearAll() {
   if (!confirm('Clear all selections?')) return;
-  selectedSessions.clear();
-  selectedFootball.clear();
+  selectedSessions = new Map();
+  selectedFootball = new Map();
   renderSessions();
 }
 
 function exportPicks() {
   const name = document.getElementById('purchaserName').value || 'Family';
-  const mainTix = parseInt(document.getElementById('ticketsPerEvent').value);
-  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
-  const allPicks = [...selectedSessions, ...selectedFootball];
+  const allPicks = [...selectedSessions.keys(), ...selectedFootball.keys()];
 
   const sorted = allPicks.map(code => ALL_SESSIONS.find(s => s.SessionCode === code)).filter(Boolean)
     .sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
@@ -761,23 +772,24 @@ function exportPicks() {
   let csv = 'Event,Venue,Zone,Session Code,Date,Games Day,Session Type,Gender,Description,Start,End,Tickets,Purchaser\n';
   sorted.forEach(s => {
     const isFB = s.Sport === 'Football (Soccer)';
-    const t = isFB ? fbTix : mainTix;
+    const t = isFB ? (selectedFootball.get(s.SessionCode) || 0) : (selectedSessions.get(s.SessionCode) || 0);
     const g = s._gender === 'women' ? 'W' : s._gender === 'men' ? 'M' : s._gender === 'mixed' ? 'M/W' : '';
     csv += `"${s.Sport}","${s.Venue}","${s.Zone}","${s.SessionCode}","${s.Date}","${s.GamesDay}","${s.SessionType}","${g}","${s.Description.replace(/"/g, '""')}","${s.StartTime}","${s.EndTime}",${t},"${name}"\n`;
   });
 
-  // Quick reference for presale
-  const mainTotal = selectedSessions.size * mainTix;
-  const fbTotal = selectedFootball.size * fbTix;
+  let mainTotal = 0; selectedSessions.forEach(t => mainTotal += t);
+  let fbTotal = 0; selectedFootball.forEach(t => fbTotal += t);
   let quick = `=== ${name.toUpperCase()}'s PRESALE BID LIST ===\n\n`;
-  quick += `MAIN EVENTS (${mainTix} tickets each):\n`;
+  quick += `MAIN EVENTS:\n`;
   sorted.filter(s => s.Sport !== 'Football (Soccer)').forEach(s => {
+    const t = selectedSessions.get(s.SessionCode) || 0;
     const g = s._gender === 'women' ? '[W]' : s._gender === 'men' ? '[M]' : s._gender === 'mixed' ? '[M/W]' : '';
-    quick += `  ${s.SessionCode}  |  ${s.Sport} ${g}  |  ${s.Date} ${s.StartTime}  |  ${mainTix} tix\n`;
+    quick += `  ${s.SessionCode}  |  ${s.Sport} ${g}  |  ${s.Date} ${s.StartTime}  |  ${t} tix\n`;
   });
-  quick += `\nFOOTBALL (${fbTix} tickets each):\n`;
+  quick += `\nFOOTBALL:\n`;
   sorted.filter(s => s.Sport === 'Football (Soccer)').forEach(s => {
-    quick += `  ${s.SessionCode}  |  ${s.Venue}  |  ${s.Date} ${s.StartTime}  |  ${fbTix} tix\n`;
+    const t = selectedFootball.get(s.SessionCode) || 0;
+    quick += `  ${s.SessionCode}  |  ${s.Venue}  |  ${s.Date} ${s.StartTime}  |  ${t} tix\n`;
   });
   quick += `\nTotal: ${mainTotal} main + ${fbTotal} football = ${mainTotal + fbTotal} tickets`;
 
@@ -806,8 +818,7 @@ function exportPicks() {
 document.getElementById('dateFrom').addEventListener('change', renderSessions);
 document.getElementById('dateTo').addEventListener('change', renderSessions);
 document.getElementById('sessionTypeFilter').addEventListener('change', renderSessions);
-document.getElementById('ticketsPerEvent').addEventListener('change', () => { renderPicks(); updateCounters(); });
-document.getElementById('ticketsPerFootball').addEventListener('change', () => { renderFootball(); renderPicks(); updateCounters(); });
+document.getElementById('defaultTickets').addEventListener('change', () => {});
 </script>
 </body>
 </html>
