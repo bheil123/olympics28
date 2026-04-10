@@ -108,6 +108,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .football-section h4 { color: #1a3a5c; margin-bottom: 8px; font-size: 0.9em; }
 .football-counter { font-weight: 700; }
 
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+.cal-header { background: #1a3a5c; color: white; padding: 6px; text-align: center; font-weight: 700; font-size: 0.8em; border-radius: 4px; }
+.cal-day { background: white; border: 1px solid #e0e0e0; border-radius: 4px; min-height: 90px; padding: 4px; font-size: 0.75em; }
+.cal-day.empty { background: #f5f5f5; border-color: #eee; }
+.cal-day.has-events { border-color: #1a3a5c; border-width: 2px; }
+.cal-date { font-weight: 700; font-size: 0.85em; color: #1a3a5c; margin-bottom: 3px; }
+.cal-date .games-day-label { font-weight: 400; font-size: 0.8em; color: #999; }
+.cal-event { padding: 2px 4px; margin-bottom: 2px; border-radius: 3px; font-size: 0.8em; line-height: 1.2; cursor: default; }
+.cal-event.cal-main { background: #e3f2fd; border-left: 3px solid #1565c0; }
+.cal-event.cal-football { background: #e8f5e9; border-left: 3px solid #2e7d32; }
+.cal-event .cal-time { font-weight: 700; color: #555; }
+.cal-event .cal-code { font-family: monospace; font-weight: 700; }
+
 @media (max-width: 900px) {
   .main-layout { flex-direction: column; height: auto; }
   .sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid #ddd; }
@@ -230,10 +243,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tab active" onclick="switchTab('browse')">Browse Sessions</div>
       <div class="tab" onclick="switchTab('football')">Football (Soccer)</div>
       <div class="tab" onclick="switchTab('tracker')">Ticket Tracker</div>
+      <div class="tab" onclick="switchTab('calendar')">Calendar</div>
     </div>
     <div id="browseTab"></div>
     <div id="footballTab" style="display:none;"></div>
     <div id="trackerTab" style="display:none;"></div>
+    <div id="calendarTab" style="display:none;"></div>
   </div>
 </div>
 
@@ -754,14 +769,16 @@ function updateCounters() {
 }
 
 function switchTab(tab) {
+  const tabs = ['browse','football','tracker','calendar'];
   document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', ['browse','football','tracker'][i] === tab);
+    t.classList.toggle('active', tabs[i] === tab);
   });
-  document.getElementById('browseTab').style.display = tab === 'browse' ? '' : 'none';
-  document.getElementById('footballTab').style.display = tab === 'football' ? '' : 'none';
-  document.getElementById('trackerTab').style.display = tab === 'tracker' ? '' : 'none';
-
+  tabs.forEach(t => {
+    const el = document.getElementById(t + 'Tab');
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
   if (tab === 'tracker') renderTracker();
+  if (tab === 'calendar') renderCalendar();
 }
 
 function renderTracker() {
@@ -820,6 +837,105 @@ function renderTracker() {
   </div>`;
 
   document.getElementById('trackerTab').innerHTML = html;
+}
+
+function renderCalendar() {
+  const allPicks = [...selectedSessions.keys(), ...selectedFootball.keys()];
+  const sessions = allPicks.map(code => ALL_SESSIONS.find(s => s.SessionCode === code)).filter(Boolean);
+
+  // Build events by date (July 10-30)
+  const eventsByDate = {};
+  sessions.forEach(s => {
+    const m = s.Date.match(/July\s+(\d+)/);
+    if (!m) return;
+    const day = parseInt(m[1]);
+    if (!eventsByDate[day]) eventsByDate[day] = [];
+    const isFB = s.Sport === 'Football (Soccer)';
+    const tix = isFB ? selectedFootball.get(s.SessionCode) : selectedSessions.get(s.SessionCode);
+    eventsByDate[day].push({ ...s, tix, isFB });
+  });
+
+  // July 2028: starts on Saturday (July 1 = Saturday)
+  // July 10 = Monday, July 30 = Sunday (3 full weeks)
+  let html = '<h3 style="margin-bottom:10px;">Selected Events Calendar - July 2028</h3>';
+
+  // Week headers
+  html += '<div class="cal-grid">';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    html += `<div class="cal-header">${d}</div>`;
+  });
+
+  // Games day mapping: Day 0 = July 14
+  function gamesDay(day) {
+    if (day < 14) return 'Day ' + (day - 14);
+    return 'Day ' + (day - 14);
+  }
+
+  // July 10 is Monday - start from there through July 30 (Sunday)
+  for (let day = 10; day <= 30; day++) {
+    const events = eventsByDate[day] || [];
+    const hasEvents = events.length > 0;
+    const dayOfWeek = new Date(2028, 6, day).toLocaleDateString('en-US', { weekday: 'short' });
+
+    html += `<div class="cal-day ${hasEvents ? 'has-events' : ''}">`;
+    html += `<div class="cal-date">Jul ${day} <span class="games-day-label">${gamesDay(day)}</span></div>`;
+
+    // Sort events by start time
+    events.sort((a, b) => (a.StartTime || '').localeCompare(b.StartTime || ''));
+
+    events.forEach(e => {
+      const cls = e.isFB ? 'cal-football' : 'cal-main';
+      const gender = e._gender === 'women' ? ' [W]' : e._gender === 'men' ? ' [M]' : e._gender === 'mixed' ? ' [M/W]' : '';
+      const time = e.StartTime !== 'TBD' ? e.StartTime : 'TBD';
+      const sportShort = e.isFB ? 'Football' : e.Sport.replace('Athletics (Track & Field)', 'Athletics').replace('Artistic Gymnastics', 'Gymnastics');
+      html += `<div class="cal-event ${cls}" title="${e.Description.replace(/\|/g, ' / ')}">
+        <span class="cal-time">${time}</span> <span class="cal-code">${e.SessionCode}</span> x${e.tix}<br>
+        ${sportShort}${gender}
+      </div>`;
+    });
+
+    html += '</div>';
+
+    // Line break after Sunday
+    if (new Date(2028, 6, day).getDay() === 0 && day < 30) {
+      // grid wraps automatically
+    }
+  }
+  html += '</div>';
+
+  // Summary below
+  let mainTotal = 0; selectedSessions.forEach(t => mainTotal += t);
+  let fbTotal = 0; selectedFootball.forEach(t => fbTotal += t);
+  const totalDays = new Set(sessions.map(s => { const m = s.Date.match(/July\s+(\d+)/); return m ? m[1] : null; }).filter(Boolean)).size;
+
+  html += `<div style="margin-top:15px; padding:10px; background:#f0f0f0; border-radius:4px; font-size:0.9em;">
+    <strong>Overview:</strong> ${allPicks.length} events across ${totalDays} days |
+    ${mainTotal} event tickets + ${fbTotal} football tickets = <strong>${mainTotal + fbTotal} total tickets</strong>
+  </div>`;
+
+  // Conflict check
+  const conflictDays = [];
+  Object.entries(eventsByDate).forEach(([day, evts]) => {
+    for (let i = 0; i < evts.length; i++) {
+      for (let j = i + 1; j < evts.length; j++) {
+        const a = evts[i], b = evts[j];
+        if (a.StartTime !== 'TBD' && b.StartTime !== 'TBD') {
+          const s1 = timeToMin(a.StartTime), e1 = timeToMin(a.EndTime);
+          const s2 = timeToMin(b.StartTime), e2 = timeToMin(b.EndTime);
+          if (s1 < e2 && s2 < e1) {
+            conflictDays.push(`Jul ${day}: ${a.SessionCode} (${a.StartTime}-${a.EndTime}) overlaps ${b.SessionCode} (${b.StartTime}-${b.EndTime})`);
+          }
+        }
+      }
+    }
+  });
+  if (conflictDays.length > 0) {
+    html += `<div style="margin-top:10px; padding:10px; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; font-size:0.85em;">
+      <strong>Time Conflicts:</strong><br>${conflictDays.join('<br>')}
+    </div>`;
+  }
+
+  document.getElementById('calendarTab').innerHTML = html;
 }
 
 // applyPreset removed - replaced by toggleRange
