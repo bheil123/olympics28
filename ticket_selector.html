@@ -6,24 +6,24 @@
 <title>LA Olympics Ticket Selector</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #1a1a2e; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-.header { background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #c4a035 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; }
-.header h1 { font-size: 1.4em; }
-.header .subtitle { font-size: 0.85em; opacity: 0.8; }
-.ticket-counter { background: rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 16px; text-align: center; }
-.ticket-counter .count { font-size: 1.8em; font-weight: bold; }
-.ticket-counter .label { font-size: 0.75em; opacity: 0.8; }
+.header { background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #c4a035 100%); color: white; padding: 6px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.header h1 { font-size: 1.1em; display: inline; }
+.header .subtitle { font-size: 0.8em; opacity: 0.8; display: inline; margin-left: 10px; }
+.ticket-counter { background: rgba(255,255,255,0.15); border-radius: 6px; padding: 3px 12px; text-align: center; display: flex; align-items: center; gap: 6px; }
+.ticket-counter .count { font-size: 1.1em; font-weight: bold; }
+.ticket-counter .label { font-size: 0.7em; opacity: 0.8; }
 .ticket-counter.warning .count { color: #ffcc00; }
 .ticket-counter.full .count { color: #ff4444; }
 
-.controls { background: white; padding: 12px 20px; border-bottom: 2px solid #e0e0e0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.control-group { display: flex; flex-direction: column; gap: 2px; }
-.control-group label { font-size: 0.7em; font-weight: 600; text-transform: uppercase; color: #666; }
-.control-group select, .control-group input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85em; }
-.control-group select { min-width: 160px; }
+.controls { background: white; padding: 4px 15px; border-bottom: 1px solid #e0e0e0; display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; flex-shrink: 0; }
+.control-group { display: flex; flex-direction: column; gap: 1px; }
+.control-group label { font-size: 0.65em; font-weight: 600; text-transform: uppercase; color: #666; }
+.control-group select, .control-group input { padding: 3px 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.8em; }
+.control-group select { min-width: 140px; }
 
-.btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85em; font-weight: 600; }
+.btn { padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.78em; font-weight: 600; }
 .btn-primary { background: #1a3a5c; color: white; }
 .btn-primary:hover { background: #0a2a4c; }
 .btn-danger { background: #dc3545; color: white; }
@@ -31,9 +31,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-warning { background: #ffc107; color: #333; }
 .btn-sm { padding: 3px 8px; font-size: 0.75em; }
 
-.main-layout { display: flex; height: calc(100vh - 140px); }
-.sidebar { width: 280px; background: white; border-right: 1px solid #ddd; overflow-y: auto; padding: 10px; flex-shrink: 0; }
-.results { flex: 1; overflow-y: auto; padding: 15px; }
+.main-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.sidebar { width: 250px; background: white; border-right: 1px solid #ddd; overflow-y: auto; padding: 6px; flex-shrink: 0; }
+.results { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.results-scroll { flex: 1; overflow-y: auto; padding: 10px; min-height: 0; }
 
 .sport-filter { margin-bottom: 8px; }
 .sport-filter label { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
@@ -90,15 +91,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .conflict-warning { background: #fff3cd; border: 1px solid #ffc107; padding: 8px 12px; border-radius: 4px; font-size: 0.82em; margin-bottom: 10px; }
 .no-results { text-align: center; padding: 40px; color: #999; }
 
-.quick-picks { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
-.quick-pick { padding: 4px 10px; border-radius: 12px; font-size: 0.75em; cursor: pointer; border: 1px solid #1a3a5c; color: #1a3a5c; background: white; }
+.quick-picks { display: flex; gap: 4px; flex-wrap: wrap; margin: 2px 0; }
+.quick-pick { padding: 2px 8px; border-radius: 10px; font-size: 0.72em; cursor: pointer; border: 1px solid #1a3a5c; color: #1a3a5c; background: white; }
 .quick-pick:hover, .quick-pick.active { background: #1a3a5c; color: white; }
 
-.family-member { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.family-member input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; width: 140px; }
+.family-member { display: flex; align-items: center; gap: 6px; }
+.family-member input { padding: 3px 6px; border: 1px solid #ccc; border-radius: 4px; width: 110px; font-size: 0.8em; }
 
-.tab-bar { display: flex; border-bottom: 2px solid #1a3a5c; margin-bottom: 10px; }
-.tab { padding: 8px 16px; cursor: pointer; font-size: 0.85em; font-weight: 600; border-bottom: 3px solid transparent; }
+.tab-bar { display: flex; border-bottom: 2px solid #1a3a5c; background: white; flex-shrink: 0; padding: 0 10px; }
+.tab { padding: 6px 14px; cursor: pointer; font-size: 0.8em; font-weight: 600; border-bottom: 3px solid transparent; }
 .tab:hover { background: #f0f0f0; }
 .tab.active { border-bottom-color: #c4a035; color: #1a3a5c; }
 
@@ -122,35 +123,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .cal-event .cal-code { font-family: monospace; font-weight: 700; }
 
 @media (max-width: 900px) {
-  .main-layout { flex-direction: column; height: auto; }
-  .sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid #ddd; }
+  .main-layout { flex-direction: column; }
+  .sidebar { width: 100%; max-height: 150px; border-right: none; border-bottom: 1px solid #ddd; flex-shrink: 0; }
+  .results { min-height: 300px; }
 }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div>
-    <h1>LA Olympics Ticket Selector</h1>
-    <div class="subtitle">Presale Bid Planner</div>
-  </div>
-  <div style="display:flex; gap:15px;">
+  <div><h1>LA Olympics Ticket Selector</h1><span class="subtitle">Presale Bid Planner</span></div>
+  <div style="display:flex; gap:10px;">
     <div class="ticket-counter" id="mainCounter">
-      <div class="count"><span id="mainTixTotal">0</span> / 12</div>
-      <div class="label">Event Tickets</div>
+      <span class="count"><span id="mainTixTotal">0</span>/12</span>
+      <span class="label">Event Tix</span>
     </div>
     <div class="ticket-counter" id="footballCounter">
-      <div class="count"><span id="fbTixTotal">0</span> / 12</div>
-      <div class="label">Football Tickets</div>
+      <span class="count"><span id="fbTixTotal">0</span>/12</span>
+      <span class="label">Football Tix</span>
     </div>
   </div>
 </div>
 
 <div class="controls">
   <div class="family-member">
-    <label style="font-size:0.8em; font-weight:600;">Purchaser:</label>
+    <label style="font-size:0.7em; font-weight:600;">Purchaser:</label>
     <input type="text" id="purchaserName" placeholder="Your name" value="Bill">
-    <label style="font-size:0.8em; font-weight:600; margin-left:10px;">Default Tix (new picks):</label>
+    <label style="font-size:0.7em; font-weight:600; margin-left:8px;">Default Tix:</label>
     <select id="defaultTickets">
       <option value="1">1</option>
       <option value="2" selected>2</option>
@@ -167,28 +166,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     </select>
   </div>
   <div class="control-group">
-    <label>Define up to 3, they can overlap</label>
-    <div style="display:flex; flex-direction:column; gap:4px;">
-      <div style="display:flex; align-items:center; gap:4px;">
-        <input type="date" class="range-from" value="2028-07-10" style="width:125px;" onchange="updateRangeLabels()">
-        <span style="font-size:0.8em;">to</span>
-        <input type="date" class="range-to" value="2028-07-16" style="width:125px;" onchange="updateRangeLabels()">
+    <label>Date Ranges (can overlap)</label>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:2px;">
+        <input type="date" class="range-from" value="2028-07-10" style="width:115px;" onchange="updateRangeLabels()">
+        <span style="font-size:0.7em;">-</span>
+        <input type="date" class="range-to" value="2028-07-16" style="width:115px;" onchange="updateRangeLabels()">
       </div>
-      <div style="display:flex; align-items:center; gap:4px;">
-        <input type="date" class="range-from" value="2028-07-17" style="width:125px;" onchange="updateRangeLabels()">
-        <span style="font-size:0.8em;">to</span>
-        <input type="date" class="range-to" value="2028-07-23" style="width:125px;" onchange="updateRangeLabels()">
+      <div style="display:flex; align-items:center; gap:2px;">
+        <input type="date" class="range-from" value="2028-07-17" style="width:115px;" onchange="updateRangeLabels()">
+        <span style="font-size:0.7em;">-</span>
+        <input type="date" class="range-to" value="2028-07-23" style="width:115px;" onchange="updateRangeLabels()">
       </div>
-      <div style="display:flex; align-items:center; gap:4px;">
-        <input type="date" class="range-from" value="2028-07-24" style="width:125px;" onchange="updateRangeLabels()">
-        <span style="font-size:0.8em;">to</span>
-        <input type="date" class="range-to" value="2028-07-30" style="width:125px;" onchange="updateRangeLabels()">
+      <div style="display:flex; align-items:center; gap:2px;">
+        <input type="date" class="range-from" value="2028-07-24" style="width:115px;" onchange="updateRangeLabels()">
+        <span style="font-size:0.7em;">-</span>
+        <input type="date" class="range-to" value="2028-07-30" style="width:115px;" onchange="updateRangeLabels()">
       </div>
+      <div class="quick-picks" id="rangePresets" style="display:flex; align-items:center;"></div>
     </div>
-  </div>
-  <div class="control-group">
-    <label>Active Ranges</label>
-    <div class="quick-picks" id="rangePresets"></div>
   </div>
   <div class="control-group">
     <label>Session Type</label>
@@ -252,10 +248,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tab" onclick="switchTab('tracker')">Ticket Tracker</div>
       <div class="tab" onclick="switchTab('calendar')">Calendar</div>
     </div>
-    <div id="browseTab"></div>
-    <div id="footballTab" style="display:none;"></div>
-    <div id="trackerTab" style="display:none;"></div>
-    <div id="calendarTab" style="display:none;"></div>
+    <div class="results-scroll">
+      <div id="browseTab"></div>
+      <div id="footballTab" style="display:none;"></div>
+      <div id="trackerTab" style="display:none;"></div>
+      <div id="calendarTab" style="display:none;"></div>
+    </div>
   </div>
 </div>
 
