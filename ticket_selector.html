@@ -73,6 +73,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .type-semifinal { background: #17a2b8; color: white; }
 .type-quarterfinal { background: #6f42c1; color: white; }
 
+.range-day { padding: 3px 4px; font-size: 0.8em; border: 1px solid #ccc; border-radius: 4px; width: 62px; }
 .tix-select { width: 44px; padding: 2px 2px; font-size: 0.8em; border: 1px solid #aaa; border-radius: 3px; text-align: center; background: #fff; font-weight: 700; color: #1a3a5c; }
 .tix-label { font-size: 0.7em; color: #666; margin-right: 2px; }
 .tix-wrapper { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
@@ -166,22 +167,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     </select>
   </div>
   <div class="control-group">
-    <label>Date Ranges (can overlap)</label>
-    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+    <label>Date Ranges (July 2028, can overlap)</label>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
       <div style="display:flex; align-items:center; gap:2px;">
-        <input type="date" class="range-from" value="2028-07-10" style="width:115px;" onchange="updateRangeLabels()">
-        <span style="font-size:0.7em;">-</span>
-        <input type="date" class="range-to" value="2028-07-16" style="width:115px;" onchange="updateRangeLabels()">
+        <select class="range-day range-from" data-default="10" onchange="updateRangeLabels()"></select>
+        <span style="font-size:0.7em;">to</span>
+        <select class="range-day range-to" data-default="16" onchange="updateRangeLabels()"></select>
       </div>
       <div style="display:flex; align-items:center; gap:2px;">
-        <input type="date" class="range-from" value="2028-07-17" style="width:115px;" onchange="updateRangeLabels()">
-        <span style="font-size:0.7em;">-</span>
-        <input type="date" class="range-to" value="2028-07-23" style="width:115px;" onchange="updateRangeLabels()">
+        <select class="range-day range-from" data-default="17" onchange="updateRangeLabels()"></select>
+        <span style="font-size:0.7em;">to</span>
+        <select class="range-day range-to" data-default="23" onchange="updateRangeLabels()"></select>
       </div>
       <div style="display:flex; align-items:center; gap:2px;">
-        <input type="date" class="range-from" value="2028-07-24" style="width:115px;" onchange="updateRangeLabels()">
-        <span style="font-size:0.7em;">-</span>
-        <input type="date" class="range-to" value="2028-07-30" style="width:115px;" onchange="updateRangeLabels()">
+        <select class="range-day range-from" data-default="24" onchange="updateRangeLabels()"></select>
+        <span style="font-size:0.7em;">to</span>
+        <select class="range-day range-to" data-default="30" onchange="updateRangeLabels()"></select>
       </div>
       <div class="quick-picks" id="rangePresets" style="display:flex; align-items:center;"></div>
     </div>
@@ -334,6 +335,7 @@ function init() {
   ALL_SESSIONS.forEach(s => {
     s._gender = classifyGender(s.Description + ' ' + (s.Sport || ''));
   });
+  initDaySelectors();
   buildSportFilters();
   // Try loading saved state from URL or localStorage
   const loaded = loadFromURL();
@@ -388,14 +390,29 @@ function getSelectedSports() {
 // Track which range presets are active (by index, or 'all')
 let activeRanges = new Set(['all']);
 
+function initDaySelectors() {
+  document.querySelectorAll('.range-day').forEach(sel => {
+    const def = sel.dataset.default;
+    let html = '<option value="">--</option>';
+    for (let d = 10; d <= 30; d++) {
+      html += `<option value="${d}" ${d == def ? 'selected' : ''}>Jul ${d}</option>`;
+    }
+    sel.innerHTML = html;
+  });
+}
+
 function getDefinedRanges() {
   const froms = document.querySelectorAll('.range-from');
   const tos = document.querySelectorAll('.range-to');
   const ranges = [];
+  let idx = 0;
   for (let i = 0; i < froms.length; i++) {
-    if (froms[i].value && tos[i].value) {
-      ranges.push({ from: froms[i].value, to: tos[i].value, index: i });
+    const fromVal = froms[i].value;
+    const toVal = tos[i].value;
+    if (fromVal && toVal) {
+      ranges.push({ from: '2028-07-' + String(fromVal).padStart(2, '0'), to: '2028-07-' + String(toVal).padStart(2, '0'), index: idx });
     }
+    idx++;
   }
   return ranges;
 }
@@ -1039,6 +1056,7 @@ function getState() {
   const sports = Array.from(document.querySelectorAll('#sportFilters input:checked')).map(cb => cb.value);
   const froms = Array.from(document.querySelectorAll('.range-from')).map(i => i.value);
   const tos = Array.from(document.querySelectorAll('.range-to')).map(i => i.value);
+  // Note: froms/tos are now day numbers (10-30) not full dates
   const main = {};
   selectedSessions.forEach((tix, code) => main[code] = tix);
   const fb = {};
@@ -1069,8 +1087,15 @@ function applyState(state) {
     if (state.froms && state.tos) {
       const froms = document.querySelectorAll('.range-from');
       const tos = document.querySelectorAll('.range-to');
-      state.froms.forEach((v, i) => { if (froms[i]) froms[i].value = v; });
-      state.tos.forEach((v, i) => { if (tos[i]) tos[i].value = v; });
+      state.froms.forEach((v, i) => {
+        if (!froms[i]) return;
+        // Handle old format (2028-07-10) or new format (10)
+        froms[i].value = String(v).includes('-') ? v.split('-').pop().replace(/^0/, '') : v;
+      });
+      state.tos.forEach((v, i) => {
+        if (!tos[i]) return;
+        tos[i].value = String(v).includes('-') ? v.split('-').pop().replace(/^0/, '') : v;
+      });
     }
     if (state.ranges) activeRanges = new Set(state.ranges);
     if (state.type) document.getElementById('sessionTypeFilter').value = state.type;
