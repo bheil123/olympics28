@@ -600,7 +600,10 @@ function renderSessions() {
 
   let html = '';
   if (filtered.length === 0) {
-    html = '<div class="no-results">No sessions match your filters. Try adjusting sport selection or date range.</div>';
+    const activeType = filters.sessionType !== 'all' ? `<br>Session Type: <strong>${filters.sessionType}</strong>` : '';
+    const activeGender = filters.gender !== 'all' ? `<br>Gender: <strong>${filters.gender}</strong>` : '';
+    const activeRangeInfo = filters.dateRanges ? `<br>Date range active (not All Dates)` : '';
+    html = `<div class="no-results">No sessions match your current filters.${activeType}${activeGender}${activeRangeInfo}<br><br>Try changing Session Type to "All Types", expanding date range, or checking more sports.<br><em>Note: July 10-13 only has Football (Soccer) on the Football tab.</em></div>`;
   }
 
   sortedDates.forEach(date => {
