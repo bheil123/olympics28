@@ -3153,7 +3153,7 @@
     "Date": "Friday, July 14",
     "GamesDay": "0",
     "SessionType": "Preliminary",
-    "Description": "M W e o n m 's e n K ' a s y K a a k y S a i k n g S l i e n g H l e e a H t e s a - t s 1s - t 1 a s n t d a 2 n n d d 2 R n u d n Run OKC L 9 o : c 0 a 0 l OKC L 12 oc :1 a 0 l | Time (CT) Time (CT)",
+    "Description": "Men's Kayak Single Heats / Women's Kayak Single Heats",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3166,7 +3166,7 @@
     "Date": "Saturday, July 15",
     "GamesDay": "1",
     "SessionType": "Final",
-    "Description": "W W o o m m e e n n ' ' s s K K a a y y a a k k S S i i n n g g l l e e S Fi e n m al ifinal OKC 1 L 0 o : c 0 a 0 l OKC L 13 oc :1 a 0 l | Time (CT) Time (CT)",
+    "Description": "Women's Kayak Single Semifinal / Women's Kayak Single Final",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3179,7 +3179,7 @@
     "Date": "Sunday, July 16",
     "GamesDay": "2",
     "SessionType": "Final",
-    "Description": "M M e e n n ' ' s s K K a a y y a a k k S S i i n n g g l l e e S Fi e n m al ifinal OKC L 9 o : c 0 a 0 l OKC L 12 oc :1 a 0 l | Time (CT) Time (CT)",
+    "Description": "Men's Kayak Single Semifinal / Men's Kayak Single Final",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3192,7 +3192,7 @@
     "Date": "Monday, July 17",
     "GamesDay": "3",
     "SessionType": "Preliminary",
-    "Description": "M W e o n m 's e n C ' a s n C o a e n S o i e n g S l i e n g H l e e a H t e s a - t s 1s - t 1 a s n t d a 2 n n d d 2 R n u d n Run OKC L 9 o : c 0 a 0 l OKC L 11 o : c 3 a 5 l | Time (CT) Time (CT) | 3.0",
+    "Description": "Men's Canoe Single Heats / Women's Canoe Single Heats",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3205,7 +3205,7 @@
     "Date": "Tuesday, July 18",
     "GamesDay": "4",
     "SessionType": "Final",
-    "Description": "W W o o m m e e n n ' ' s s C C a a n n o o e e S S i i n n g g l l e e S Fi e n m al ifinal OKC L 9 o : c 0 a 0 l OKC L 12 oc :1 a 0 l | Time (CT) Time (CT)",
+    "Description": "Women's Canoe Single Semifinal / Women's Canoe Single Final",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3218,7 +3218,7 @@
     "Date": "Wednesday, July 19",
     "GamesDay": "5",
     "SessionType": "Final",
-    "Description": "M M e e n n ' ' s s C C a a n n o o e e S S i i n n g g l l e e S Fi e n m al ifinal OKC L 9 o : c 0 a 0 l OKC L 12 oc :1 a 0 l | Time (CT) Time (CT) | Women's Kayak Cross Round 1",
+    "Description": "Men's Canoe Single Semifinal / Men's Canoe Single Final",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3231,7 +3231,7 @@
     "Date": "Thursday, July 20",
     "GamesDay": "6",
     "SessionType": "Preliminary",
-    "Description": "M W e o n m 's e n K ' a s y K a a k y C a r k o C s r s o R s o s u R n e d p 1 echage OKC L 9 o : c 0 a 0 l OKC 1 L 2 o : c 0 a 5 l | Time (CT) Time (CT) | Men's Kayak Cross Repechage",
+    "Description": "Men's Kayak Cross Round 1 / Women's Kayak Cross Round 1",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3244,7 +3244,7 @@
     "Date": "Friday, July 21",
     "GamesDay": "7",
     "SessionType": "Preliminary",
-    "Description": "M W e o n m 's e n K ' a s y K a a k y C a r k o C s r s o H s e s a H t e s ats OKC L 9 o : c 0 a 0 l OKC L 11 o : c 0 a 0 l | Time (CT) Time (CT) | Women's Kayak Cross Quarterfinal | Men's Kayak Cross Quarterfinal",
+    "Description": "Men's Kayak Cross Heats / Women's Kayak Cross Heats",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
@@ -3257,7 +3257,7 @@
     "Date": "Saturday, July 22",
     "GamesDay": "8",
     "SessionType": "Final",
-    "Description": "W Me o n m 's e n K ' a s y K a a k y C a r k o C s r s o S s e s m S i e f m in i a f l inal OKC L 9 o : c 0 a 0 l OKC L 11 o : c 2 a 0 l | Time (CT) Time (CT) | Women's Kayak Cross Final | Men's Kayak Cross Final | Men's Kayak Double 500m Heats | Women's Kayak Double 500m Heats | Men's Canoe Single 1000m Heats | Women's Canoe Single 200m Heats",
+    "Description": "Women's Kayak Cross Semifinal / Men's Kayak Cross Semifinal",
     "StartTime": "TBD",
     "EndTime": "TBD",
     "NotTicketed": false
