@@ -119,7 +119,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <div class="header">
   <div>
     <h1>LA Olympics Ticket Selector</h1>
-    <div class="subtitle">Heil Family - Presale Bid Planner</div>
+    <div class="subtitle">Presale Bid Planner</div>
   </div>
   <div style="display:flex; gap:15px;">
     <div class="ticket-counter" id="mainCounter">
@@ -677,7 +677,7 @@ function renderTracker() {
   const name = document.getElementById('purchaserName').value || 'Family Member';
   const allPicks = [...selectedSessions.keys(), ...selectedFootball.keys()];
 
-  let html = `<h3 style="margin-bottom:10px;">HEIL FAMILY OLYMPICS TICKET TRACKER - ${name}</h3>`;
+  let html = `<h3 style="margin-bottom:10px;">LA OLYMPICS TICKET TRACKER - ${name}</h3>`;
   html += `<table style="width:100%; border-collapse:collapse; font-size:0.82em;">
     <thead><tr style="background:#1a3a5c; color:white;">
       <th style="padding:6px; text-align:left;">Event</th>
