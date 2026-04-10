@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heil Family - LA 2028 Olympics Ticket Selector</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+.header { background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #c4a035 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 1.4em; }
+.header .subtitle { font-size: 0.85em; opacity: 0.8; }
+.ticket-counter { background: rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 16px; text-align: center; }
+.ticket-counter .count { font-size: 1.8em; font-weight: bold; }
+.ticket-counter .label { font-size: 0.75em; opacity: 0.8; }
+.ticket-counter.warning .count { color: #ffcc00; }
+.ticket-counter.full .count { color: #ff4444; }
+
+.controls { background: white; padding: 12px 20px; border-bottom: 2px solid #e0e0e0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.control-group { display: flex; flex-direction: column; gap: 2px; }
+.control-group label { font-size: 0.7em; font-weight: 600; text-transform: uppercase; color: #666; }
+.control-group select, .control-group input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85em; }
+.control-group select { min-width: 160px; }
+
+.btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85em; font-weight: 600; }
+.btn-primary { background: #1a3a5c; color: white; }
+.btn-primary:hover { background: #0a2a4c; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-warning { background: #ffc107; color: #333; }
+.btn-sm { padding: 3px 8px; font-size: 0.75em; }
+
+.main-layout { display: flex; height: calc(100vh - 140px); }
+.sidebar { width: 280px; background: white; border-right: 1px solid #ddd; overflow-y: auto; padding: 10px; flex-shrink: 0; }
+.results { flex: 1; overflow-y: auto; padding: 15px; }
+
+.sport-filter { margin-bottom: 8px; }
+.sport-filter label { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+.sport-filter label:hover { background: #f0f0f0; }
+.sport-filter input[type="checkbox"] { accent-color: #1a3a5c; }
+.sport-count { font-size: 0.7em; color: #999; margin-left: auto; }
+
+.section-header { font-size: 0.75em; font-weight: 700; text-transform: uppercase; color: #1a3a5c; padding: 8px 6px 4px; border-bottom: 1px solid #eee; margin-top: 10px; }
+
+.day-group { margin-bottom: 20px; }
+.day-header { background: #1a3a5c; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-weight: 600; display: flex; justify-content: space-between; }
+.day-header .date { font-size: 1em; }
+.day-header .games-day { font-size: 0.8em; opacity: 0.8; }
+
+.session-card { background: white; border: 1px solid #e0e0e0; border-left: 4px solid #ccc; padding: 10px 12px; margin-bottom: 1px; display: flex; align-items: center; gap: 12px; transition: all 0.15s; cursor: pointer; }
+.session-card:hover { background: #f8f9ff; }
+.session-card.selected { border-left-color: #28a745; background: #f0fff4; }
+.session-card.conflict { border-left-color: #dc3545; background: #fff5f5; opacity: 0.6; }
+.session-card.medal { border-left-color: #c4a035; }
+.session-card.medal.selected { border-left-color: #28a745; }
+.session-card.womens-highlight { border-left-color: #e91e63; }
+.session-card.womens-highlight.selected { border-left-color: #28a745; }
+.session-card.dimmed { opacity: 0.45; }
+
+.session-checkbox { width: 20px; height: 20px; accent-color: #28a745; flex-shrink: 0; }
+.session-info { flex: 1; min-width: 0; }
+.session-top { display: flex; justify-content: space-between; align-items: center; }
+.session-code { font-weight: 700; font-size: 0.9em; background: #eef; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+.session-sport { font-weight: 600; font-size: 0.85em; color: #1a3a5c; }
+.session-time { font-size: 0.85em; color: #555; font-weight: 600; }
+.session-venue { font-size: 0.78em; color: #777; }
+.session-desc { font-size: 0.8em; color: #444; margin-top: 2px; }
+.session-type { display: inline-block; font-size: 0.7em; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
+.type-final { background: #c4a035; color: white; }
+.type-preliminary { background: #6c757d; color: white; }
+.type-semifinal { background: #17a2b8; color: white; }
+.type-quarterfinal { background: #6f42c1; color: white; }
+
+.gender-tag { display: inline-block; font-size: 0.65em; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+.gender-women { background: #fce4ec; color: #c2185b; border: 1px solid #f48fb1; }
+.gender-men { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+.gender-mixed { background: #f3e5f5; color: #7b1fa2; border: 1px solid #ce93d8; }
+
+.my-picks { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 2px solid #c4a035; }
+.my-picks h3 { color: #1a3a5c; margin-bottom: 10px; font-size: 1em; }
+.pick-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.83em; }
+.pick-item:last-child { border-bottom: none; }
+.pick-remove { color: #dc3545; cursor: pointer; font-weight: bold; }
+
+.conflict-warning { background: #fff3cd; border: 1px solid #ffc107; padding: 8px 12px; border-radius: 4px; font-size: 0.82em; margin-bottom: 10px; }
+.no-results { text-align: center; padding: 40px; color: #999; }
+
+.quick-picks { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.quick-pick { padding: 4px 10px; border-radius: 12px; font-size: 0.75em; cursor: pointer; border: 1px solid #1a3a5c; color: #1a3a5c; background: white; }
+.quick-pick:hover, .quick-pick.active { background: #1a3a5c; color: white; }
+
+.family-member { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.family-member input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; width: 140px; }
+
+.tab-bar { display: flex; border-bottom: 2px solid #1a3a5c; margin-bottom: 10px; }
+.tab { padding: 8px 16px; cursor: pointer; font-size: 0.85em; font-weight: 600; border-bottom: 3px solid transparent; }
+.tab:hover { background: #f0f0f0; }
+.tab.active { border-bottom-color: #c4a035; color: #1a3a5c; }
+
+.export-area { background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 0.8em; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+
+.football-section { background: #ffe; border: 2px solid #c4a035; border-radius: 8px; padding: 10px; margin-top: 10px; }
+.football-section h4 { color: #1a3a5c; margin-bottom: 8px; font-size: 0.9em; }
+.football-counter { font-weight: 700; }
+
+@media (max-width: 900px) {
+  .main-layout { flex-direction: column; height: auto; }
+  .sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>LA 2028 Olympics Ticket Selector</h1>
+    <div class="subtitle">Heil Family - Presale Bid Planner</div>
+  </div>
+  <div style="display:flex; gap:15px;">
+    <div class="ticket-counter" id="mainCounter">
+      <div class="count" id="mainCount">0</div>
+      <div class="label">of 6 Events (<span id="mainTixTotal">0</span> tix)</div>
+    </div>
+    <div class="ticket-counter" id="footballCounter">
+      <div class="count" id="footballCount">0</div>
+      <div class="label">of 6 Football (<span id="fbTixTotal">0</span> tix)</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="family-member">
+    <label style="font-size:0.8em; font-weight:600;">Purchaser:</label>
+    <input type="text" id="purchaserName" placeholder="Your name" value="Bill">
+    <label style="font-size:0.8em; font-weight:600; margin-left:10px;">Tix/Event:</label>
+    <select id="ticketsPerEvent">
+      <option value="1">1</option>
+      <option value="2" selected>2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8">8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+      <option value="11">11</option>
+      <option value="12">12</option>
+    </select>
+    <label style="font-size:0.8em; font-weight:600; margin-left:10px;">Tix/Football Game:</label>
+    <select id="ticketsPerFootball">
+      <option value="1">1</option>
+      <option value="2" selected>2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8">8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+      <option value="11">11</option>
+      <option value="12">12</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Date Range</label>
+    <div style="display:flex; gap:4px;">
+      <input type="date" id="dateFrom" value="2028-07-14" style="width:130px;">
+      <input type="date" id="dateTo" value="2028-07-30" style="width:130px;">
+    </div>
+  </div>
+  <div class="control-group">
+    <label>Session Type</label>
+    <select id="sessionTypeFilter">
+      <option value="all">All Types</option>
+      <option value="Final">Finals / Medal</option>
+      <option value="Preliminary">Preliminary</option>
+      <option value="Semifinal">Semifinal</option>
+      <option value="Quarterfinal">Quarterfinal</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Gender / Discipline</label>
+    <select id="genderFilter" onchange="renderSessions()">
+      <option value="all">All</option>
+      <option value="women">Women's Only</option>
+      <option value="men">Men's Only</option>
+      <option value="mixed">Mixed / Both</option>
+      <option value="women+mixed">Women's + Mixed</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Quick Presets</label>
+    <div class="quick-picks">
+      <span class="quick-pick" onclick="applyPreset('bill')">Bill (7/18-21)</span>
+      <span class="quick-pick" onclick="applyPreset('finals')">Medal Events</span>
+      <span class="quick-pick" onclick="applyPreset('all')">All Dates</span>
+    </div>
+  </div>
+  <button class="btn btn-danger btn-sm" onclick="clearAll()">Clear All Picks</button>
+  <button class="btn btn-success btn-sm" onclick="exportPicks()">Export Picks</button>
+</div>
+
+<div class="main-layout">
+  <div class="sidebar">
+    <div class="section-header">Filter by Sport</div>
+    <div id="sportFilters"></div>
+
+    <div class="section-header" style="margin-top:15px;">Your Picks (<span id="pickCount">0</span>)</div>
+    <div id="picksList"></div>
+
+    <div class="football-section" style="margin-top:15px;">
+      <h4>Football Tickets (Separate Pool)</h4>
+      <div style="font-size:0.8em; margin-bottom:6px;">
+        <label><input type="radio" name="fbVenue" value="sanjose" checked onchange="renderSessions()"> San Jose (Women's)</label><br>
+        <label><input type="radio" name="fbVenue" value="rosebowl" onchange="renderSessions()"> Rose Bowl / Pasadena</label><br>
+        <label><input type="radio" name="fbVenue" value="all" onchange="renderSessions()"> Show All Venues</label>
+      </div>
+      <div class="football-counter">Football: <span id="fbPickCount">0</span> / 6 events</div>
+    </div>
+  </div>
+
+  <div class="results">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('browse')">Browse Sessions</div>
+      <div class="tab" onclick="switchTab('football')">Football (Soccer)</div>
+      <div class="tab" onclick="switchTab('tracker')">Ticket Tracker</div>
+    </div>
+    <div id="browseTab"></div>
+    <div id="footballTab" style="display:none;"></div>
+    <div id="trackerTab" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// DATA WILL BE INJECTED HERE
+let ALL_SESSIONS = [];
+let selectedSessions = new Set();
+let selectedFootball = new Set();
+
+// Load data
+fetch('all_sessions.json')
+  .then(r => r.json())
+  .then(data => {
+    ALL_SESSIONS = data;
+    // Add ceremony sessions manually if not present
+    const hasCeremony = data.some(s => s.Sport.includes('Ceremony'));
+    if (!hasCeremony) {
+      ALL_SESSIONS.push({
+        Sport: 'Opening Ceremony', Venue: '2028 Stadium', Zone: 'Inglewood',
+        SessionCode: 'OC001', Date: 'Friday, July 14', GamesDay: '0',
+        SessionType: 'Final', Description: 'Opening Ceremony', StartTime: '17:00', EndTime: '21:00', NotTicketed: false
+      });
+      ALL_SESSIONS.push({
+        Sport: 'Opening Ceremony - Celebration', Venue: 'LA Memorial Coliseum', Zone: 'Exposition Park',
+        SessionCode: 'OC002', Date: 'Friday, July 14', GamesDay: '0',
+        SessionType: 'Final', Description: 'Opening Ceremony - Celebration', StartTime: '17:00', EndTime: '21:00', NotTicketed: false
+      });
+      ALL_SESSIONS.push({
+        Sport: 'Closing Ceremony', Venue: 'LA Memorial Coliseum', Zone: 'Exposition Park',
+        SessionCode: 'CC001', Date: 'Sunday, July 30', GamesDay: '16',
+        SessionType: 'Final', Description: 'Closing Ceremony', StartTime: '18:00', EndTime: '22:00', NotTicketed: false
+      });
+    }
+    init();
+  })
+  .catch(e => {
+    console.error('Failed to load data, using inline fallback', e);
+    document.getElementById('browseTab').innerHTML = '<div class="no-results">Error loading session data. Make sure all_sessions.json is in the same folder.</div>';
+  });
+
+function classifyGender(desc) {
+  if (!desc) return 'unknown';
+  const d = desc.toLowerCase();
+  const hasWomen = /women|woman|female/.test(d);
+  const hasMen = /\bmen\b|\bman\b|\bmale\b/.test(d) && !/women/.test(d);
+  // Check for "Men's" specifically (not inside "Women's")
+  const menExplicit = /\bmen's\b/i.test(desc);
+  const womenExplicit = /\bwomen's\b/i.test(desc);
+  const mixed = /mixed|both|open\b/i.test(d);
+
+  if (mixed) return 'mixed';
+  if (womenExplicit && menExplicit) return 'mixed';  // "Men's/Women's Apparatus Finals"
+  if (womenExplicit && !menExplicit) return 'women';
+  if (menExplicit && !womenExplicit) return 'men';
+  // Fallback: check description lines
+  const lines = desc.split(/[|\/]/);
+  const genders = new Set();
+  lines.forEach(l => {
+    if (/women/i.test(l)) genders.add('women');
+    if (/\bmen\b/i.test(l) && !/women/i.test(l)) genders.add('men');
+    if (/mixed|open/i.test(l)) genders.add('mixed');
+  });
+  if (genders.size > 1) return 'mixed';
+  if (genders.has('women')) return 'women';
+  if (genders.has('men')) return 'men';
+  return 'unknown'; // ceremonies, etc.
+}
+
+function genderTag(gender) {
+  if (gender === 'women') return '<span class="gender-tag gender-women">W</span>';
+  if (gender === 'men') return '<span class="gender-tag gender-men">M</span>';
+  if (gender === 'mixed') return '<span class="gender-tag gender-mixed">M/W</span>';
+  return '';
+}
+
+function init() {
+  // Pre-compute gender for all sessions
+  ALL_SESSIONS.forEach(s => {
+    s._gender = classifyGender(s.Description + ' ' + (s.Sport || ''));
+  });
+  buildSportFilters();
+  const preselect = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Opening Ceremony', 'Opening Ceremony - Celebration', 'Closing Ceremony', 'Swimming', 'Diving', 'Basketball'];
+  document.querySelectorAll('#sportFilters input[type=checkbox]').forEach(cb => {
+    if (preselect.some(s => cb.value === s)) cb.checked = true;
+  });
+  renderSessions();
+}
+
+function parseDate(dateStr) {
+  // "Friday, July 14" -> Date object in 2028
+  const m = dateStr.match(/July\s+(\d+)/);
+  if (!m) return null;
+  return new Date(2028, 6, parseInt(m[1])); // July = month 6
+}
+
+function dateToISO(dateStr) {
+  const d = parseDate(dateStr);
+  if (!d) return '';
+  return d.toISOString().split('T')[0];
+}
+
+function buildSportFilters() {
+  const sportCounts = {};
+  ALL_SESSIONS.forEach(s => {
+    if (s.Sport === 'Football (Soccer)') return; // Separate section
+    sportCounts[s.Sport] = (sportCounts[s.Sport] || 0) + 1;
+  });
+
+  const container = document.getElementById('sportFilters');
+  const sorted = Object.keys(sportCounts).sort();
+  container.innerHTML = sorted.map(sport => `
+    <div class="sport-filter">
+      <label>
+        <input type="checkbox" value="${sport}" onchange="renderSessions()">
+        ${sport}
+        <span class="sport-count">(${sportCounts[sport]})</span>
+      </label>
+    </div>
+  `).join('');
+}
+
+function getSelectedSports() {
+  return Array.from(document.querySelectorAll('#sportFilters input:checked')).map(cb => cb.value);
+}
+
+function getFilters() {
+  const sports = getSelectedSports();
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  const sessionType = document.getElementById('sessionTypeFilter').value;
+  const gender = document.getElementById('genderFilter').value;
+  return { sports, dateFrom, dateTo, sessionType, gender };
+}
+
+function filterSessions(sessions, filters) {
+  return sessions.filter(s => {
+    if (s.Sport === 'Football (Soccer)') return false;
+    if (s.NotTicketed) return false;
+    if (filters.sports.length > 0 && !filters.sports.includes(s.Sport)) return false;
+    const iso = dateToISO(s.Date);
+    if (filters.dateFrom && iso < filters.dateFrom) return false;
+    if (filters.dateTo && iso > filters.dateTo) return false;
+    if (filters.sessionType !== 'all' && s.SessionType !== filters.sessionType) return false;
+    // Gender filter - "unknown" always passes (ceremonies etc.)
+    if (filters.gender !== 'all' && s._gender !== 'unknown') {
+      if (filters.gender === 'women' && s._gender !== 'women') return false;
+      if (filters.gender === 'men' && s._gender !== 'men') return false;
+      if (filters.gender === 'mixed' && s._gender !== 'mixed') return false;
+      if (filters.gender === 'women+mixed' && s._gender !== 'women' && s._gender !== 'mixed') return false;
+    }
+    return true;
+  });
+}
+
+function getConflicts(sessionCode) {
+  // Check if this session time-conflicts with any selected session on the same day
+  const session = ALL_SESSIONS.find(s => s.SessionCode === sessionCode);
+  if (!session) return [];
+  const conflicts = [];
+  const allSelected = new Set([...selectedSessions, ...selectedFootball]);
+  allSelected.forEach(code => {
+    if (code === sessionCode) return;
+    const other = ALL_SESSIONS.find(s => s.SessionCode === code);
+    if (!other) return;
+    if (dateToISO(session.Date) !== dateToISO(other.Date)) return;
+    // Check time overlap
+    if (session.StartTime !== 'TBD' && other.StartTime !== 'TBD') {
+      const s1 = timeToMin(session.StartTime), e1 = timeToMin(session.EndTime);
+      const s2 = timeToMin(other.StartTime), e2 = timeToMin(other.EndTime);
+      if (s1 < e2 && s2 < e1) {
+        conflicts.push(other);
+      }
+    }
+  });
+  return conflicts;
+}
+
+function timeToMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function toggleSession(code, isFootball) {
+  const set = isFootball ? selectedFootball : selectedSessions;
+  const maxEvents = 6;
+
+  if (set.has(code)) {
+    set.delete(code);
+  } else {
+    if (set.size >= maxEvents) {
+      alert(`Maximum ${maxEvents} ${isFootball ? 'football ' : ''}events reached! Remove one first.`);
+      return;
+    }
+    // Check for conflicts
+    const conflicts = getConflicts(code);
+    if (conflicts.length > 0) {
+      const names = conflicts.map(c => `${c.SessionCode} (${c.Sport} ${c.StartTime})`).join(', ');
+      if (!confirm(`Time conflict with: ${names}. Select anyway?`)) return;
+    }
+    set.add(code);
+  }
+  renderSessions();
+}
+
+function renderSessions() {
+  const filters = getFilters();
+  const filtered = filterSessions(ALL_SESSIONS, filters);
+
+  // Group by date
+  const byDate = {};
+  filtered.forEach(s => {
+    const key = s.Date;
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(s);
+  });
+
+  // Sort dates
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    const da = parseDate(a), db = parseDate(b);
+    return da - db;
+  });
+
+  let html = '';
+  if (filtered.length === 0) {
+    html = '<div class="no-results">No sessions match your filters. Try adjusting sport selection or date range.</div>';
+  }
+
+  sortedDates.forEach(date => {
+    const sessions = byDate[date].sort((a, b) => (a.StartTime || '').localeCompare(b.StartTime || ''));
+    const gd = sessions[0].GamesDay;
+    html += `<div class="day-group">
+      <div class="day-header">
+        <span class="date">${date}, 2028</span>
+        <span class="games-day">Games Day ${gd}</span>
+      </div>`;
+
+    sessions.forEach(s => {
+      const isSelected = selectedSessions.has(s.SessionCode);
+      const conflicts = getConflicts(s.SessionCode);
+      const hasConflict = !isSelected && conflicts.length > 0;
+      const isMedal = s.SessionType === 'Final' || s.SessionType === 'Bronze';
+      const gender = s._gender || 'unknown';
+      let classes = 'session-card';
+      if (isSelected) classes += ' selected';
+      if (hasConflict) classes += ' conflict';
+      if (isMedal) classes += ' medal';
+      if (gender === 'women' && !isSelected) classes += ' womens-highlight';
+
+      const typeClass = s.SessionType === 'Final' ? 'type-final' :
+                        s.SessionType === 'Preliminary' ? 'type-preliminary' :
+                        s.SessionType === 'Semifinal' ? 'type-semifinal' :
+                        s.SessionType === 'Quarterfinal' ? 'type-quarterfinal' : 'type-preliminary';
+
+      const desc = s.Description.replace(/\|/g, ' / ').substring(0, 120);
+
+      html += `<div class="${classes}" onclick="toggleSession('${s.SessionCode}', false)">
+        <input type="checkbox" class="session-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSession('${s.SessionCode}', false)">
+        <div class="session-info">
+          <div class="session-top">
+            <div>
+              <span class="session-code">${s.SessionCode}</span>
+              <span class="session-sport">${s.Sport}</span>
+              ${genderTag(gender)}
+              <span class="session-type ${typeClass}">${s.SessionType}</span>
+            </div>
+            <span class="session-time">${s.StartTime} - ${s.EndTime}</span>
+          </div>
+          <div class="session-venue">${s.Venue} (${s.Zone})</div>
+          <div class="session-desc">${desc}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('browseTab').innerHTML = html;
+  renderFootball();
+  renderPicks();
+  updateCounters();
+}
+
+function renderFootball() {
+  const venue = document.querySelector('input[name=fbVenue]:checked').value;
+  const football = ALL_SESSIONS.filter(s => {
+    if (s.Sport !== 'Football (Soccer)') return false;
+    if (s.NotTicketed) return false;
+    if (venue === 'sanjose') return s.Venue.includes('San Jos');
+    if (venue === 'rosebowl') return s.Venue.includes('Rose Bowl') || s.Zone === 'Pasadena';
+    return true;
+  }).sort((a, b) => {
+    const da = parseDate(a.Date), db = parseDate(b.Date);
+    return da - db || (a.StartTime || '').localeCompare(b.StartTime || '');
+  });
+
+  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
+  let html = `<h3 style="margin-bottom:10px;">Football (Soccer) - Separate pool (6 events x ${fbTix} tickets = ${6*fbTix} max)</h3>`;
+
+  if (football.length === 0) {
+    html += '<div class="no-results">No football sessions at selected venue.</div>';
+  }
+
+  // Group by date
+  const byDate = {};
+  football.forEach(s => {
+    if (!byDate[s.Date]) byDate[s.Date] = [];
+    byDate[s.Date].push(s);
+  });
+
+  Object.keys(byDate).sort((a, b) => parseDate(a) - parseDate(b)).forEach(date => {
+    const sessions = byDate[date];
+    html += `<div class="day-group"><div class="day-header"><span class="date">${date}, 2028</span><span class="games-day">Day ${sessions[0].GamesDay}</span></div>`;
+    sessions.forEach(s => {
+      const isSelected = selectedFootball.has(s.SessionCode);
+      const isMedal = s.SessionType === 'Final' || s.SessionType === 'Bronze';
+      let classes = 'session-card';
+      if (isSelected) classes += ' selected';
+      if (isMedal) classes += ' medal';
+
+      const fbGender = s._gender || 'unknown';
+      html += `<div class="${classes}" onclick="toggleSession('${s.SessionCode}', true)">
+        <input type="checkbox" class="session-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSession('${s.SessionCode}', true)">
+        <div class="session-info">
+          <div class="session-top">
+            <div>
+              <span class="session-code">${s.SessionCode}</span>
+              <span class="session-sport">${s.Venue}</span>
+              ${genderTag(fbGender)}
+              <span class="session-type ${s.SessionType === 'Final' ? 'type-final' : 'type-preliminary'}">${s.SessionType}</span>
+            </div>
+            <span class="session-time">${s.StartTime} - ${s.EndTime}</span>
+          </div>
+          <div class="session-desc">${s.Description.replace(/\|/g, ' / ').substring(0, 100)}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('footballTab').innerHTML = html;
+}
+
+function renderPicks() {
+  const container = document.getElementById('picksList');
+  const tix = parseInt(document.getElementById('ticketsPerEvent').value);
+  let html = '';
+
+  // Main picks
+  if (selectedSessions.size > 0) {
+    html += '<div style="font-size:0.75em; font-weight:600; color:#1a3a5c; margin:6px 0;">Main Events:</div>';
+    selectedSessions.forEach(code => {
+      const s = ALL_SESSIONS.find(x => x.SessionCode === code);
+      if (!s) return;
+      html += `<div class="pick-item">
+        <div>
+          <strong>${s.SessionCode}</strong> ${s.Sport}<br>
+          <span style="color:#777; font-size:0.9em;">${s.Date} ${s.StartTime}</span>
+        </div>
+        <span class="pick-remove" onclick="toggleSession('${code}', false)">X</span>
+      </div>`;
+    });
+  }
+
+  // Football picks
+  if (selectedFootball.size > 0) {
+    html += '<div style="font-size:0.75em; font-weight:600; color:#1a3a5c; margin:6px 0;">Football:</div>';
+    selectedFootball.forEach(code => {
+      const s = ALL_SESSIONS.find(x => x.SessionCode === code);
+      if (!s) return;
+      html += `<div class="pick-item">
+        <div>
+          <strong>${s.SessionCode}</strong> ${s.Venue}<br>
+          <span style="color:#777; font-size:0.9em;">${s.Date} ${s.StartTime}</span>
+        </div>
+        <span class="pick-remove" onclick="toggleSession('${code}', true)">X</span>
+      </div>`;
+    });
+  }
+
+  if (!html) html = '<div style="padding:10px; color:#999; font-size:0.8em;">No sessions selected yet. Click sessions to add them.</div>';
+
+  container.innerHTML = html;
+  document.getElementById('pickCount').textContent = selectedSessions.size + selectedFootball.size;
+}
+
+function updateCounters() {
+  const mainTix = parseInt(document.getElementById('ticketsPerEvent').value);
+  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
+  const mainCount = selectedSessions.size;
+  const fbCount = selectedFootball.size;
+
+  document.getElementById('mainCount').textContent = mainCount;
+  document.getElementById('footballCount').textContent = fbCount;
+  document.getElementById('mainTixTotal').textContent = mainCount * mainTix;
+  document.getElementById('fbTixTotal').textContent = fbCount * fbTix;
+
+  const mc = document.getElementById('mainCounter');
+  mc.className = 'ticket-counter' + (mainCount >= 6 ? ' full' : mainCount >= 4 ? ' warning' : '');
+
+  const fc = document.getElementById('footballCounter');
+  fc.className = 'ticket-counter' + (fbCount >= 6 ? ' full' : fbCount >= 4 ? ' warning' : '');
+
+  document.getElementById('fbPickCount').textContent = fbCount;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['browse','football','tracker'][i] === tab);
+  });
+  document.getElementById('browseTab').style.display = tab === 'browse' ? '' : 'none';
+  document.getElementById('footballTab').style.display = tab === 'football' ? '' : 'none';
+  document.getElementById('trackerTab').style.display = tab === 'tracker' ? '' : 'none';
+
+  if (tab === 'tracker') renderTracker();
+}
+
+function renderTracker() {
+  const name = document.getElementById('purchaserName').value || 'Family Member';
+  const mainTix = parseInt(document.getElementById('ticketsPerEvent').value);
+  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
+  const allPicks = [...selectedSessions, ...selectedFootball];
+
+  let html = `<h3 style="margin-bottom:10px;">HEIL FAMILY OLYMPICS TICKET TRACKER - ${name}</h3>`;
+  html += `<table style="width:100%; border-collapse:collapse; font-size:0.82em;">
+    <thead><tr style="background:#1a3a5c; color:white;">
+      <th style="padding:6px; text-align:left;">Event</th>
+      <th style="padding:6px; text-align:left;">Venue</th>
+      <th style="padding:6px; text-align:left;">Zone</th>
+      <th style="padding:6px; text-align:left;">Session Code</th>
+      <th style="padding:6px; text-align:left;">Date</th>
+      <th style="padding:6px;">Day</th>
+      <th style="padding:6px; text-align:left;">Type</th>
+      <th style="padding:6px; text-align:left;">Description</th>
+      <th style="padding:6px;">Start</th>
+      <th style="padding:6px;">End</th>
+      <th style="padding:6px;">Tickets</th>
+      <th style="padding:6px; text-align:left;">Purchaser</th>
+    </tr></thead><tbody>`;
+
+  const sorted = allPicks.map(code => ALL_SESSIONS.find(s => s.SessionCode === code)).filter(Boolean)
+    .sort((a, b) => parseDate(a.Date) - parseDate(b.Date) || (a.StartTime || '').localeCompare(b.StartTime || ''));
+
+  sorted.forEach((s, i) => {
+    const bg = i % 2 === 0 ? '#fff' : '#f8f9fa';
+    const isFB = s.Sport === 'Football (Soccer)';
+    const tixForThis = isFB ? fbTix : mainTix;
+    const gender = s._gender || 'unknown';
+    const genderLabel = gender === 'women' ? 'W' : gender === 'men' ? 'M' : gender === 'mixed' ? 'M/W' : '';
+    html += `<tr style="background:${bg}; border-bottom:1px solid #eee;">
+      <td style="padding:5px 6px;">${s.Sport}</td>
+      <td style="padding:5px 6px;">${s.Venue}</td>
+      <td style="padding:5px 6px;">${s.Zone}</td>
+      <td style="padding:5px 6px; font-weight:700; font-family:monospace;">${s.SessionCode}</td>
+      <td style="padding:5px 6px;">${s.Date}</td>
+      <td style="padding:5px 6px; text-align:center;">${s.GamesDay}</td>
+      <td style="padding:5px 6px;">${s.SessionType}</td>
+      <td style="padding:5px 6px;">${genderLabel ? '<strong>['+genderLabel+']</strong> ' : ''}${s.Description.replace(/\|/g, ' / ').substring(0, 80)}</td>
+      <td style="padding:5px 6px; text-align:center;">${s.StartTime}</td>
+      <td style="padding:5px 6px; text-align:center;">${s.EndTime}</td>
+      <td style="padding:5px 6px; text-align:center;">${tixForThis}</td>
+      <td style="padding:5px 6px;">${name}</td>
+    </tr>`;
+  });
+
+  const mainTotal = selectedSessions.size * mainTix;
+  const fbTotal = selectedFootball.size * fbTix;
+  html += `</tbody></table>`;
+  html += `<div style="margin-top:15px; padding:10px; background:#f0f0f0; border-radius:4px;">
+    <strong>Summary:</strong> ${selectedSessions.size} main events x ${mainTix} tickets = ${mainTotal} tickets |
+    ${selectedFootball.size} football events x ${fbTix} tickets = ${fbTotal} tickets |
+    <strong>Grand Total: ${mainTotal + fbTotal} tickets</strong>
+  </div>`;
+
+  document.getElementById('trackerTab').innerHTML = html;
+}
+
+function applyPreset(preset) {
+  if (preset === 'bill') {
+    document.getElementById('dateFrom').value = '2028-07-18';
+    document.getElementById('dateTo').value = '2028-07-21';
+    // Check Artistic Gymnastics, Athletics
+    document.querySelectorAll('#sportFilters input').forEach(cb => {
+      cb.checked = ['Artistic Gymnastics', 'Athletics (Track & Field)', 'Swimming', 'Diving'].includes(cb.value);
+    });
+  } else if (preset === 'finals') {
+    document.getElementById('dateFrom').value = '2028-07-14';
+    document.getElementById('dateTo').value = '2028-07-30';
+    document.getElementById('sessionTypeFilter').value = 'Final';
+    document.querySelectorAll('#sportFilters input').forEach(cb => {
+      cb.checked = ['Artistic Gymnastics', 'Athletics (Track & Field)'].includes(cb.value);
+    });
+  } else if (preset === 'all') {
+    document.getElementById('dateFrom').value = '2028-07-10';
+    document.getElementById('dateTo').value = '2028-07-30';
+    document.getElementById('sessionTypeFilter').value = 'all';
+  }
+  renderSessions();
+}
+
+function clearAll() {
+  if (!confirm('Clear all selections?')) return;
+  selectedSessions.clear();
+  selectedFootball.clear();
+  renderSessions();
+}
+
+function exportPicks() {
+  const name = document.getElementById('purchaserName').value || 'Family';
+  const mainTix = parseInt(document.getElementById('ticketsPerEvent').value);
+  const fbTix = parseInt(document.getElementById('ticketsPerFootball').value);
+  const allPicks = [...selectedSessions, ...selectedFootball];
+
+  const sorted = allPicks.map(code => ALL_SESSIONS.find(s => s.SessionCode === code)).filter(Boolean)
+    .sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
+
+  // CSV
+  let csv = 'Event,Venue,Zone,Session Code,Date,Games Day,Session Type,Gender,Description,Start,End,Tickets,Purchaser\n';
+  sorted.forEach(s => {
+    const isFB = s.Sport === 'Football (Soccer)';
+    const t = isFB ? fbTix : mainTix;
+    const g = s._gender === 'women' ? 'W' : s._gender === 'men' ? 'M' : s._gender === 'mixed' ? 'M/W' : '';
+    csv += `"${s.Sport}","${s.Venue}","${s.Zone}","${s.SessionCode}","${s.Date}","${s.GamesDay}","${s.SessionType}","${g}","${s.Description.replace(/"/g, '""')}","${s.StartTime}","${s.EndTime}",${t},"${name}"\n`;
+  });
+
+  // Quick reference for presale
+  const mainTotal = selectedSessions.size * mainTix;
+  const fbTotal = selectedFootball.size * fbTix;
+  let quick = `=== ${name.toUpperCase()}'s PRESALE BID LIST ===\n\n`;
+  quick += `MAIN EVENTS (${mainTix} tickets each):\n`;
+  sorted.filter(s => s.Sport !== 'Football (Soccer)').forEach(s => {
+    const g = s._gender === 'women' ? '[W]' : s._gender === 'men' ? '[M]' : s._gender === 'mixed' ? '[M/W]' : '';
+    quick += `  ${s.SessionCode}  |  ${s.Sport} ${g}  |  ${s.Date} ${s.StartTime}  |  ${mainTix} tix\n`;
+  });
+  quick += `\nFOOTBALL (${fbTix} tickets each):\n`;
+  sorted.filter(s => s.Sport === 'Football (Soccer)').forEach(s => {
+    quick += `  ${s.SessionCode}  |  ${s.Venue}  |  ${s.Date} ${s.StartTime}  |  ${fbTix} tix\n`;
+  });
+  quick += `\nTotal: ${mainTotal} main + ${fbTotal} football = ${mainTotal + fbTotal} tickets`;
+
+  // Show in tracker tab
+  switchTab('tracker');
+  renderTracker();
+
+  // Download CSV
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name}_olympic_tickets_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Also copy quick ref to clipboard
+  navigator.clipboard.writeText(quick).then(() => {
+    alert('CSV downloaded and quick reference copied to clipboard!');
+  }).catch(() => {
+    alert('CSV downloaded! Quick reference:\n\n' + quick);
+  });
+}
+
+// Listen for filter changes
+document.getElementById('dateFrom').addEventListener('change', renderSessions);
+document.getElementById('dateTo').addEventListener('change', renderSessions);
+document.getElementById('sessionTypeFilter').addEventListener('change', renderSessions);
+document.getElementById('ticketsPerEvent').addEventListener('change', () => { renderPicks(); updateCounters(); });
+document.getElementById('ticketsPerFootball').addEventListener('change', () => { renderFootball(); renderPicks(); updateCounters(); });
+</script>
+</body>
+</html>
