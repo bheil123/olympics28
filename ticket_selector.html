@@ -212,11 +212,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     <div id="picksList"></div>
 
     <div class="football-section" style="margin-top:15px;">
-      <h4>Football Tickets (Separate Pool)</h4>
-      <div style="font-size:0.8em; margin-bottom:6px;">
-        <label><input type="radio" name="fbVenue" value="sanjose" checked onchange="renderSessions()"> San Jose (Women's)</label><br>
-        <label><input type="radio" name="fbVenue" value="rosebowl" onchange="renderSessions()"> Rose Bowl / Pasadena</label><br>
-        <label><input type="radio" name="fbVenue" value="all" onchange="renderSessions()"> Show All Venues</label>
+      <h4>Football Venues (check to show)</h4>
+      <div style="font-size:0.8em; margin-bottom:6px;" id="fbVenueFilters">
+        <label><input type="checkbox" name="fbVenue" value="sanjose" checked onchange="renderSessions()"> San Jose</label><br>
+        <label><input type="checkbox" name="fbVenue" value="rosebowl" checked onchange="renderSessions()"> Rose Bowl / Pasadena</label><br>
+        <label><input type="checkbox" name="fbVenue" value="sandiego" onchange="renderSessions()"> San Diego</label><br>
+        <label><input type="checkbox" name="fbVenue" value="nashville" onchange="renderSessions()"> Nashville</label><br>
+        <label><input type="checkbox" name="fbVenue" value="columbus" onchange="renderSessions()"> Columbus</label><br>
+        <label><input type="checkbox" name="fbVenue" value="newyork" onchange="renderSessions()"> New York</label><br>
+        <label><input type="checkbox" name="fbVenue" value="stlouis" onchange="renderSessions()"> St. Louis</label><br>
       </div>
       <div class="football-counter">Football: <span id="fbPickCount">0</span> / 6 events</div>
     </div>
@@ -513,13 +517,21 @@ function renderSessions() {
 }
 
 function renderFootball() {
-  const venue = document.querySelector('input[name=fbVenue]:checked').value;
+  const checkedVenues = Array.from(document.querySelectorAll('input[name=fbVenue]:checked')).map(cb => cb.value);
+  const venueMatch = {
+    sanjose: s => s.Venue.includes('San Jos'),
+    rosebowl: s => s.Venue.includes('Rose Bowl') || s.Zone === 'Pasadena',
+    sandiego: s => s.Venue.includes('San Diego'),
+    nashville: s => s.Venue.includes('Nashville'),
+    columbus: s => s.Venue.includes('Columbus'),
+    newyork: s => s.Venue.includes('New York'),
+    stlouis: s => s.Venue.includes('St. Louis'),
+  };
   const football = ALL_SESSIONS.filter(s => {
     if (s.Sport !== 'Football (Soccer)') return false;
     if (s.NotTicketed) return false;
-    if (venue === 'sanjose') return s.Venue.includes('San Jos');
-    if (venue === 'rosebowl') return s.Venue.includes('Rose Bowl') || s.Zone === 'Pasadena';
-    return true;
+    if (checkedVenues.length === 0) return true; // show all if none checked
+    return checkedVenues.some(v => venueMatch[v] && venueMatch[v](s));
   }).sort((a, b) => {
     const da = parseDate(a.Date), db = parseDate(b.Date);
     return da - db || (a.StartTime || '').localeCompare(b.StartTime || '');
