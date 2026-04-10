@@ -1145,39 +1145,20 @@ function saveToURL() {
   });
 }
 
-function autoSave() {
-  const state = getState();
-  localStorage.setItem('olympics28_state', JSON.stringify(state));
-}
 
 function loadFromURL() {
+  // Only restore state from an explicit URL hash (from "Save to Link")
   const hash = window.location.hash.slice(1);
   if (hash) {
     try {
       const state = JSON.parse(atob(hash));
       return applyState(state);
     } catch(e) {
-      console.log('Invalid URL state, trying localStorage');
-    }
-  }
-  // Fallback to localStorage
-  const saved = localStorage.getItem('olympics28_state');
-  if (saved) {
-    try {
-      return applyState(JSON.parse(saved));
-    } catch(e) {
-      console.log('Invalid localStorage state');
+      console.log('Invalid URL state');
     }
   }
   return false;
 }
-
-// Auto-save on every change
-const _origRender = renderSessions;
-renderSessions = function() {
-  _origRender();
-  autoSave();
-};
 
 // Listen for filter changes
 document.getElementById('sessionTypeFilter').addEventListener('change', renderSessions);
