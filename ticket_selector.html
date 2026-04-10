@@ -972,6 +972,9 @@ function clearAll() {
   if (!confirm('Clear all selections?')) return;
   selectedSessions = new Map();
   selectedFootball = new Map();
+  localStorage.removeItem('olympics28_state');
+  // Also clear URL hash
+  history.replaceState(null, '', window.location.pathname);
   renderSessions();
 }
 
