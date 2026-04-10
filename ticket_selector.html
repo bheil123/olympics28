@@ -212,7 +212,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
   <button class="btn btn-primary btn-sm" onclick="saveToURL()">Save to Link - Share/Bookmark</button>
   <button class="btn btn-danger btn-sm" onclick="clearAll()">Clear All Picks</button>
-  <button class="btn btn-success btn-sm" onclick="exportPicks()">Export Picks</button>
+  <div class="control-group" style="flex-direction:row; align-items:center; gap:4px;">
+    <select id="exportFormat" style="padding:4px 8px; font-size:0.8em; border-radius:4px; border:1px solid #ccc;">
+      <option value="csv">CSV</option>
+      <option value="xls">Excel (.xls)</option>
+      <option value="sheets">Google Sheets (clipboard)</option>
+    </select>
+    <button class="btn btn-success btn-sm" onclick="exportPicks()">Export Picks</button>
+  </div>
 </div>
 
 <div class="main-layout">
@@ -947,57 +954,84 @@ function clearAll() {
   renderSessions();
 }
 
-function exportPicks() {
+function getExportData() {
   const name = document.getElementById('purchaserName').value || 'Family';
   const allPicks = [...selectedSessions.keys(), ...selectedFootball.keys()];
-
   const sorted = allPicks.map(code => ALL_SESSIONS.find(s => s.SessionCode === code)).filter(Boolean)
     .sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
-
-  // CSV
-  let csv = 'Event,Venue,Zone,Session Code,Date,Games Day,Session Type,Gender,Description,Start,End,Tickets,Purchaser\n';
-  sorted.forEach(s => {
+  const headers = ['Event','Venue','Zone','Session Code','Date','Games Day','Session Type','Gender','Description','Start','End','Tickets','Purchaser'];
+  const rows = sorted.map(s => {
     const isFB = s.Sport === 'Football (Soccer)';
     const t = isFB ? (selectedFootball.get(s.SessionCode) || 0) : (selectedSessions.get(s.SessionCode) || 0);
     const g = s._gender === 'women' ? 'W' : s._gender === 'men' ? 'M' : s._gender === 'mixed' ? 'M/W' : '';
-    csv += `"${s.Sport}","${s.Venue}","${s.Zone}","${s.SessionCode}","${s.Date}","${s.GamesDay}","${s.SessionType}","${g}","${s.Description.replace(/"/g, '""')}","${s.StartTime}","${s.EndTime}",${t},"${name}"\n`;
+    const desc = (s.Description || '').replace(/\|/g, ' / ').substring(0, 120);
+    return [s.Sport, s.Venue, s.Zone, s.SessionCode, s.Date, s.GamesDay, s.SessionType, g, desc, s.StartTime, s.EndTime, t, name];
   });
+  return { name, headers, rows, sorted };
+}
 
-  let mainTotal = 0; selectedSessions.forEach(t => mainTotal += t);
-  let fbTotal = 0; selectedFootball.forEach(t => fbTotal += t);
-  let quick = `=== ${name.toUpperCase()}'s PRESALE BID LIST ===\n\n`;
-  quick += `MAIN EVENTS:\n`;
-  sorted.filter(s => s.Sport !== 'Football (Soccer)').forEach(s => {
-    const t = selectedSessions.get(s.SessionCode) || 0;
-    const g = s._gender === 'women' ? '[W]' : s._gender === 'men' ? '[M]' : s._gender === 'mixed' ? '[M/W]' : '';
-    quick += `  ${s.SessionCode}  |  ${s.Sport} ${g}  |  ${s.Date} ${s.StartTime}  |  ${t} tix\n`;
-  });
-  quick += `\nFOOTBALL:\n`;
-  sorted.filter(s => s.Sport === 'Football (Soccer)').forEach(s => {
-    const t = selectedFootball.get(s.SessionCode) || 0;
-    quick += `  ${s.SessionCode}  |  ${s.Venue}  |  ${s.Date} ${s.StartTime}  |  ${t} tix\n`;
-  });
-  quick += `\nTotal: ${mainTotal} main + ${fbTotal} football = ${mainTotal + fbTotal} tickets`;
+function exportPicks() {
+  const format = document.getElementById('exportFormat').value;
+  const { name, headers, rows, sorted } = getExportData();
+  const datestamp = new Date().toISOString().split('T')[0];
 
-  // Show in tracker tab
+  if (format === 'csv') {
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csv += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    downloadFile(csv, `${name}_olympic_tickets_${datestamp}.csv`, 'text/csv');
+    alert('CSV downloaded!');
+
+  } else if (format === 'xls') {
+    // HTML table that Excel opens natively as .xls
+    let xls = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Tickets</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
+    xls += '<tr>' + headers.map(h => `<th style="background:#1a3a5c;color:white;font-weight:bold;padding:4px 8px;">${h}</th>`).join('') + '</tr>';
+    rows.forEach(row => {
+      const isFinal = row[6] === 'Final';
+      const bg = isFinal ? '#FFF8E1' : '#FFFFFF';
+      xls += '<tr>' + row.map(v => `<td style="background:${bg};padding:3px 6px;border:1px solid #ddd;">${v}</td>`).join('') + '</tr>';
+    });
+    // Summary row
+    let mainTotal = 0; selectedSessions.forEach(t => mainTotal += t);
+    let fbTotal = 0; selectedFootball.forEach(t => fbTotal += t);
+    xls += `<tr><td colspan="11" style="font-weight:bold;padding:6px;">Total</td><td style="font-weight:bold;padding:6px;">${mainTotal + fbTotal}</td><td></td></tr>`;
+    xls += '</table></body></html>';
+    downloadFile(xls, `${name}_olympic_tickets_${datestamp}.xls`, 'application/vnd.ms-excel');
+    alert('Excel file downloaded!');
+
+  } else if (format === 'sheets') {
+    // Tab-separated for pasting into Google Sheets
+    let tsv = headers.join('\t') + '\n';
+    rows.forEach(row => {
+      tsv += row.map(v => String(v).replace(/\t/g, ' ')).join('\t') + '\n';
+    });
+    navigator.clipboard.writeText(tsv).then(() => {
+      alert('Copied to clipboard! Open Google Sheets and press Ctrl+V (or Cmd+V) to paste. It will auto-split into columns.');
+    }).catch(() => {
+      // Fallback: show in a textarea
+      const ta = document.createElement('textarea');
+      ta.value = tsv;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Copied to clipboard! Open Google Sheets and paste.');
+    });
+  }
+
   switchTab('tracker');
   renderTracker();
+}
 
-  // Download CSV
-  const blob = new Blob([csv], {type: 'text/csv'});
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${name}_olympic_tickets_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-
-  // Also copy quick ref to clipboard
-  navigator.clipboard.writeText(quick).then(() => {
-    alert('CSV downloaded and quick reference copied to clipboard!');
-  }).catch(() => {
-    alert('CSV downloaded! Quick reference:\n\n' + quick);
-  });
 }
 
 // === SAVE / LOAD STATE ===
