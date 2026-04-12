@@ -1022,8 +1022,21 @@ async function decryptText(base64, passphrase) {
   return new TextDecoder().decode(decrypted);
 }
 
-function getEncryptedSheet() {
-  return localStorage.getItem('olympics28_sheetEnc') || '';
+let _cachedEncBlob = null;
+
+async function getEncryptedSheet() {
+  // Try localStorage first (from manual setup), then fetch from config.json
+  const local = localStorage.getItem('olympics28_sheetEnc');
+  if (local) return local;
+  if (_cachedEncBlob) return _cachedEncBlob;
+  try {
+    const resp = await fetch('config.json?_t=' + Date.now());
+    if (resp.ok) {
+      const cfg = await resp.json();
+      if (cfg.sheet) { _cachedEncBlob = cfg.sheet; return cfg.sheet; }
+    }
+  } catch(e) { /* no config file */ }
+  return '';
 }
 
 function extractSheetId(url) {
@@ -1039,16 +1052,25 @@ async function saveSheetEncrypted() {
   const pass = document.getElementById('sheetPass').value.trim();
   if (!url || !pass) { alert('Enter both the Sheet URL and a passphrase'); return; }
   const encrypted = await encryptText(url, pass);
+  // Save locally
   localStorage.setItem('olympics28_sheetEnc', encrypted);
+  // Generate config.json content for git
+  const configJson = JSON.stringify({ sheet: encrypted }, null, 2);
+  const blob = new Blob([configJson], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'config.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
   document.getElementById('sheetUrl').value = '';
-  document.getElementById('sheetStatus').textContent = 'Sheet URL encrypted and saved! Others just need the passphrase to load it.';
+  document.getElementById('sheetStatus').textContent = 'Encrypted! config.json downloaded - add it to your git repo so everyone can use it.';
   document.getElementById('sheetStatus').style.color = '#28a745';
 }
 
 async function loadSheetDecrypted() {
   const pass = document.getElementById('sheetPass').value.trim();
   if (!pass) { alert('Enter the family passphrase'); return; }
-  const encrypted = getEncryptedSheet();
+  const encrypted = await getEncryptedSheet();
   if (!encrypted) { alert('No encrypted sheet URL found. One person must first paste the URL and click "Save & Encrypt".'); return; }
   try {
     const url = await decryptText(encrypted, pass);
@@ -1184,8 +1206,8 @@ async function fetchFamilySheetFromUrl(url) {
   }
 }
 
-function renderFamilyCalendar() {
-  const hasEncrypted = !!getEncryptedSheet();
+async function renderFamilyCalendar() {
+  const hasEncrypted = !!(await getEncryptedSheet());
   let html = `<div class="family-setup">
     <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
       <div style="flex:1; min-width:200px;">
@@ -1203,8 +1225,9 @@ function renderFamilyCalendar() {
       <div style="margin-top:8px; padding:8px; background:#f8f8f8; border-radius:4px;">
         <div style="font-size:0.75em; color:#666; margin-bottom:6px;">
           <strong>Step 1:</strong> In Google Sheets: File &gt; Share &gt; Publish to web &gt; CSV &gt; Publish<br>
-          <strong>Step 2:</strong> Paste the sheet URL below with a passphrase, then click Save &amp; Encrypt<br>
-          <strong>Step 3:</strong> Share the passphrase with family (verbally or text - never in the app)
+          <strong>Step 2:</strong> Paste the sheet URL below with a passphrase, click Save &amp; Encrypt<br>
+          <strong>Step 3:</strong> A config.json file downloads - add it to the git repo and push<br>
+          <strong>Step 4:</strong> Share the passphrase with family (verbally or text)
         </div>
         <label style="font-size:0.75em;">Google Sheet URL</label>
         <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." style="width:100%; margin-bottom:4px;">
