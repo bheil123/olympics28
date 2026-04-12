@@ -1196,7 +1196,7 @@ async function fetchFamilySheetFromUrl(url) {
         start: r[iStart] || '',
         end: r[iEnd] || '',
         tix: parseInt(r[iTix]) || 0,
-        purchaser: r[iPurchaser] || 'Unknown',
+        purchaser: (r[iPurchaser] || '').trim() || 'Unknown',
         desc: r[iDesc] || '',
         venue: r[iVenue] || '',
         type: r[iType] || '',
@@ -1204,8 +1204,12 @@ async function fetchFamilySheetFromUrl(url) {
     }
 
     const people = new Set(familyData.map(d => d.purchaser)).size;
-    statusEl.textContent = `Loaded ${familyData.length} entries from ${people} people (${rows.length} CSV rows, header at row ${headerIdx + 1})`;
+    const skipped = rows.length - headerIdx - 1 - familyData.length;
+    statusEl.textContent = `Loaded ${familyData.length} entries from ${people} people (skipped ${skipped} non-data rows)`;
     statusEl.style.color = familyData.length > 0 ? '#28a745' : '#e65100';
+    console.log('Column indices:', { iEvent, iCode, iDate, iStart, iEnd, iTix, iPurchaser, iDesc });
+    console.log('Headers found:', header);
+    console.log('Family data:', familyData.map(d => ({ code: d.code, purchaser: d.purchaser, day: d.dayNum })));
     renderFamilyCalendarContent();
   } catch(e) {
     statusEl.textContent = 'Error: ' + e.message;
