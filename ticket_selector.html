@@ -126,6 +126,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .cal-event .cal-time { font-weight: 700; color: #555; }
 .cal-event .cal-code { font-family: monospace; font-weight: 700; }
 
+.family-setup { background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #ddd; }
+.family-setup label { font-size: 0.8em; font-weight: 600; }
+.family-setup input { padding: 4px 8px; font-size: 0.8em; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-top: 4px; }
+.family-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.family-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.78em; }
+.family-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
 @media (max-width: 900px) {
   .main-layout { flex-direction: column; }
   .sidebar { width: 100%; max-height: 150px; border-right: none; border-bottom: 1px solid #ddd; flex-shrink: 0; }
@@ -255,12 +262,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tab" onclick="switchTab('football')">Football (Soccer)</div>
       <div class="tab" onclick="switchTab('tracker')">Ticket Tracker</div>
       <div class="tab" onclick="switchTab('calendar')">Calendar</div>
+      <div class="tab" onclick="switchTab('family')">Family Calendar</div>
     </div>
     <div class="results-scroll">
       <div id="browseTab"></div>
       <div id="footballTab" style="display:none;"></div>
       <div id="trackerTab" style="display:none;"></div>
       <div id="calendarTab" style="display:none;"></div>
+      <div id="familyTab" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -798,7 +807,7 @@ function updateCounters() {
 }
 
 function switchTab(tab) {
-  const tabs = ['browse','football','tracker','calendar'];
+  const tabs = ['browse','football','tracker','calendar','family'];
   document.querySelectorAll('.tab').forEach((t, i) => {
     t.classList.toggle('active', tabs[i] === tab);
   });
@@ -808,6 +817,7 @@ function switchTab(tab) {
   });
   if (tab === 'tracker') renderTracker();
   if (tab === 'calendar') renderCalendar();
+  if (tab === 'family') renderFamilyCalendar();
 }
 
 function renderTracker() {
@@ -967,7 +977,250 @@ function renderCalendar() {
   document.getElementById('calendarTab').innerHTML = html;
 }
 
-// applyPreset removed - replaced by toggleRange
+// === FAMILY CALENDAR (Google Sheet import) ===
+
+const PERSON_COLORS = [
+  { bg: '#E3F2FD', border: '#1565C0', text: '#0D47A1' },
+  { bg: '#FCE4EC', border: '#C2185B', text: '#880E4F' },
+  { bg: '#E8F5E9', border: '#2E7D32', text: '#1B5E20' },
+  { bg: '#FFF3E0', border: '#E65100', text: '#BF360C' },
+  { bg: '#F3E5F5', border: '#7B1FA2', text: '#4A148C' },
+  { bg: '#E0F7FA', border: '#00838F', text: '#006064' },
+  { bg: '#FFF8E1', border: '#F9A825', text: '#F57F17' },
+  { bg: '#EFEBE9', border: '#5D4037', text: '#3E2723' },
+  { bg: '#E8EAF6', border: '#283593', text: '#1A237E' },
+  { bg: '#F1F8E9', border: '#558B2F', text: '#33691E' },
+];
+
+let familyData = null;
+
+function getSheetId() {
+  return localStorage.getItem('olympics28_sheetUrl') || '';
+}
+
+function saveSheetId(url) {
+  localStorage.setItem('olympics28_sheetUrl', url);
+}
+
+function extractSheetId(url) {
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : url; // allow pasting just the ID too
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let current = '';
+  let inQuotes = false;
+  let row = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i+1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(current.trim()); current = ''; }
+      else if (ch === '\n' || (ch === '\r' && text[i+1] === '\n')) {
+        if (ch === '\r') i++;
+        row.push(current.trim()); current = '';
+        if (row.some(c => c)) rows.push(row);
+        row = [];
+      } else { current += ch; }
+    }
+  }
+  if (current || row.length) { row.push(current.trim()); if (row.some(c => c)) rows.push(row); }
+  return rows;
+}
+
+async function fetchFamilySheet() {
+  const urlInput = document.getElementById('sheetUrl');
+  const url = urlInput.value.trim();
+  if (!url) { alert('Please paste a Google Sheet URL'); return; }
+  saveSheetId(url);
+  const sheetId = extractSheetId(url);
+  const statusEl = document.getElementById('sheetStatus');
+  statusEl.textContent = 'Loading...';
+
+  // The sheet must be published: File > Share > Publish to web > CSV
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&_t=${Date.now()}`;
+  try {
+    const resp = await fetch(csvUrl);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} - Sheet may not be published to web`);
+    const text = await resp.text();
+    if (text.includes('<!DOCTYPE html>') || text.includes('<html')) {
+      throw new Error('Sheet is not published to web. In Google Sheets: File > Share > Publish to web > select CSV > Publish');
+    }
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('No data rows found');
+
+    // Find columns by header
+    const header = rows[0].map(h => h.toLowerCase().replace(/\s+/g, ''));
+    const findCol = (...names) => header.findIndex(h => names.some(n => h.includes(n)));
+    const iEvent = findCol('event', 'sport');
+    const iCode = findCol('sessioncode', 'session');
+    const iDate = findCol('date');
+    const iStart = findCol('start');
+    const iEnd = findCol('end');
+    const iTix = findCol('totaltix', 'tickets', 'tix');
+    const iPurchaser = findCol('purchaser', 'buyer', 'name');
+    const iDesc = findCol('description', 'desc');
+    const iVenue = findCol('venue');
+    const iType = findCol('sessiontype', 'type');
+
+    familyData = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[iCode] && !r[iEvent]) continue; // skip empty rows
+      // Parse date - handle "Jul 15 (Sat)", "Saturday, July 15", etc.
+      let dateStr = r[iDate] || '';
+      let dayNum = null;
+      const dm = dateStr.match(/(?:Jul|July)\s*(\d+)/i);
+      if (dm) dayNum = parseInt(dm[1]);
+      if (!dayNum) {
+        const dm2 = dateStr.match(/7\/(\d+)/);
+        if (dm2) dayNum = parseInt(dm2[1]);
+      }
+
+      familyData.push({
+        event: r[iEvent] || '',
+        code: r[iCode] || '',
+        date: dateStr,
+        dayNum,
+        start: r[iStart] || '',
+        end: r[iEnd] || '',
+        tix: parseInt(r[iTix]) || 0,
+        purchaser: r[iPurchaser] || 'Unknown',
+        desc: r[iDesc] || '',
+        venue: r[iVenue] || '',
+        type: r[iType] || '',
+      });
+    }
+
+    statusEl.textContent = `Loaded ${familyData.length} entries from ${new Set(familyData.map(d => d.purchaser)).size} people`;
+    renderFamilyCalendarContent();
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    statusEl.style.color = '#dc3545';
+  }
+}
+
+function renderFamilyCalendar() {
+  const saved = getSheetId();
+  let html = `<div class="family-setup">
+    <label>Google Sheet URL (Paste full URL - must be published to web)</label>
+    <div style="display:flex; gap:6px; margin-top:4px;">
+      <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." value="${saved}" style="flex:1;">
+      <button class="btn btn-primary btn-sm" onclick="fetchFamilySheet()">Load Sheet</button>
+    </div>
+    <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:4px;">
+      ${saved ? 'Sheet URL saved. Click Load Sheet to refresh.' : 'Paste your Google Sheet URL and click Load Sheet.'}
+    </div>
+    <div style="font-size:0.7em; color:#999; margin-top:4px;">
+      Setup: In Google Sheets, go to File &gt; Share &gt; Publish to web &gt; select "Comma-separated values (.csv)" &gt; click Publish.<br>
+      Expected columns: Event, Venue, Session Code, Date, Start, End, Total Tix, Purchaser
+    </div>
+  </div>`;
+
+  html += '<div id="familyCalendarContent"></div>';
+  document.getElementById('familyTab').innerHTML = html;
+
+  if (familyData) renderFamilyCalendarContent();
+}
+
+function renderFamilyCalendarContent() {
+  if (!familyData || familyData.length === 0) return;
+
+  // Get unique purchasers and assign colors
+  const purchasers = [...new Set(familyData.map(d => d.purchaser))];
+  const colorMap = {};
+  purchasers.forEach((p, i) => colorMap[p] = PERSON_COLORS[i % PERSON_COLORS.length]);
+
+  // Legend
+  let html = '<div class="family-legend">';
+  purchasers.forEach(p => {
+    const c = colorMap[p];
+    html += `<div class="family-legend-item"><div class="family-swatch" style="background:${c.bg}; border:2px solid ${c.border};"></div>${p} (${familyData.filter(d => d.purchaser === p).length})</div>`;
+  });
+  html += '</div>';
+
+  // Calendar grid
+  html += '<div class="cal-grid">';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    html += `<div class="cal-header">${d}</div>`;
+  });
+
+  // Group events by day
+  const eventsByDay = {};
+  familyData.forEach(e => {
+    if (e.dayNum) {
+      if (!eventsByDay[e.dayNum]) eventsByDay[e.dayNum] = [];
+      eventsByDay[e.dayNum].push(e);
+    }
+  });
+
+  for (let day = 10; day <= 30; day++) {
+    const events = eventsByDay[day] || [];
+    const hasEvents = events.length > 0;
+    const gd = day < 14 ? 'Day ' + (day - 14) : 'Day ' + (day - 14);
+
+    html += `<div class="cal-day ${hasEvents ? 'has-events' : ''}">`;
+    html += `<div class="cal-date">Jul ${day} <span class="games-day-label">${gd}</span></div>`;
+
+    events.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+    events.forEach(e => {
+      const c = colorMap[e.purchaser] || PERSON_COLORS[0];
+      const sportShort = e.event.replace('Athletics (Track & Field)', 'Athletics').replace('Artistic Gymnastics', 'Gymnastics');
+      html += `<div class="cal-event" style="background:${c.bg}; border-left:3px solid ${c.border}; color:${c.text};" title="${e.desc || e.event}">
+        <span class="cal-time">${e.start || 'TBD'}</span> <span class="cal-code">${e.code}</span> x${e.tix}<br>
+        ${sportShort} <span style="font-weight:700;">${e.purchaser}</span>
+      </div>`;
+    });
+
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Summary table by person
+  html += '<div style="margin-top:15px;"><h4 style="color:#1a3a5c;">Summary by Person</h4>';
+  html += '<table style="width:100%; border-collapse:collapse; font-size:0.8em; margin-top:6px;">';
+  html += '<tr style="background:#1a3a5c; color:white;"><th style="padding:4px 8px; text-align:left;">Person</th><th style="padding:4px 8px;">Events</th><th style="padding:4px 8px;">Total Tix</th><th style="padding:4px 8px; text-align:left;">Days</th></tr>';
+  purchasers.forEach((p, i) => {
+    const entries = familyData.filter(d => d.purchaser === p);
+    const totalTix = entries.reduce((s, e) => s + e.tix, 0);
+    const days = [...new Set(entries.map(e => e.dayNum).filter(Boolean))].sort((a,b) => a-b);
+    const c = colorMap[p];
+    html += `<tr style="background:${c.bg};"><td style="padding:4px 8px; font-weight:600; color:${c.text};">${p}</td><td style="padding:4px 8px; text-align:center;">${entries.length}</td><td style="padding:4px 8px; text-align:center;">${totalTix}</td><td style="padding:4px 8px;">Jul ${days.join(', ')}</td></tr>`;
+  });
+  html += '</table></div>';
+
+  // Conflict check across all people
+  const conflicts = [];
+  const allDays = [...new Set(familyData.map(d => d.dayNum).filter(Boolean))];
+  allDays.forEach(day => {
+    const dayEvents = familyData.filter(d => d.dayNum === day && d.start);
+    for (let i = 0; i < dayEvents.length; i++) {
+      for (let j = i + 1; j < dayEvents.length; j++) {
+        const a = dayEvents[i], b = dayEvents[j];
+        if (a.purchaser !== b.purchaser) continue; // only same-person conflicts matter
+        if (a.start && b.start && a.end && b.end) {
+          const s1 = timeToMin(a.start), e1 = timeToMin(a.end);
+          const s2 = timeToMin(b.start), e2 = timeToMin(b.end);
+          if (s1 < e2 && s2 < e1) {
+            conflicts.push(`${a.purchaser} on Jul ${day}: ${a.code} (${a.start}-${a.end}) overlaps ${b.code} (${b.start}-${b.end})`);
+          }
+        }
+      }
+    }
+  });
+  if (conflicts.length > 0) {
+    html += `<div style="margin-top:10px; padding:10px; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; font-size:0.85em;">
+      <strong>Same-person Time Conflicts:</strong><br>${conflicts.join('<br>')}
+    </div>`;
+  }
+
+  document.getElementById('familyCalendarContent').innerHTML = html;
+}
 
 function clearAll() {
   if (!confirm('Clear all selections?')) return;
