@@ -1174,7 +1174,9 @@ async function fetchFamilySheetFromUrl(url) {
     familyData = [];
     for (let i = headerIdx + 1; i < rows.length; i++) {
       const r = rows[i];
-      if (!r[iCode] && !r[iEvent]) continue; // skip empty rows
+      const code = (r[iCode] || '').trim();
+      // Only include rows with a valid session code (2-4 letters + 2-3 digits)
+      if (!/^[A-Z]{2,4}\d{2,3}$/i.test(code)) continue;
       // Parse date - handle "Jul 15 (Sat)", "Saturday, July 15", etc.
       let dateStr = r[iDate] || '';
       let dayNum = null;
@@ -1184,10 +1186,11 @@ async function fetchFamilySheetFromUrl(url) {
         const dm2 = dateStr.match(/7\/(\d+)/);
         if (dm2) dayNum = parseInt(dm2[1]);
       }
+      if (!dayNum) continue; // skip rows without a valid date
 
       familyData.push({
         event: r[iEvent] || '',
-        code: r[iCode] || '',
+        code,
         date: dateStr,
         dayNum,
         start: r[iStart] || '',
