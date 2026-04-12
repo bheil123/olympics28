@@ -1207,9 +1207,6 @@ async function fetchFamilySheetFromUrl(url) {
     const skipped = rows.length - headerIdx - 1 - familyData.length;
     statusEl.textContent = `Loaded ${familyData.length} entries from ${people} people (skipped ${skipped} non-data rows)`;
     statusEl.style.color = familyData.length > 0 ? '#28a745' : '#e65100';
-    console.log('Column indices:', { iEvent, iCode, iDate, iStart, iEnd, iTix, iPurchaser, iDesc });
-    console.log('Headers found:', header);
-    console.log('Family data:', familyData.map(d => ({ code: d.code, purchaser: d.purchaser, day: d.dayNum })));
     renderFamilyCalendarContent();
   } catch(e) {
     statusEl.textContent = 'Error: ' + e.message;
