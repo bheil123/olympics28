@@ -1120,6 +1120,8 @@ async function fetchFamilySheetFromUrl(url) {
     if (!text) {
       throw new Error('Could not fetch sheet. Make sure it is published to web: File > Share > Publish to web > CSV > Publish');
     }
+    console.log('Sheet CSV first 500 chars:', text.substring(0, 500));
+    console.log('Sheet CSV total length:', text.length);
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('No data rows found. Got ' + rows.length + ' rows. First: ' + (rows[0]||[]).join(',').substring(0,80));
 
@@ -1133,6 +1135,8 @@ async function fetchFamilySheetFromUrl(url) {
       }
     }
     const header = rows[headerIdx].map(h => h.toLowerCase().replace(/\s+/g, ''));
+    console.log('Parsed rows:', rows.length, 'Header row:', headerIdx, 'Headers:', header);
+    console.log('First data row:', rows[headerIdx + 1]);
     const findCol = (...names) => header.findIndex(h => names.some(n => h.includes(n)));
     const iEvent = findCol('event', 'sport');
     const iCode = findCol('sessioncode', 'session');
