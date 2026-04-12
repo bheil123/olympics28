@@ -1091,18 +1091,34 @@ async function fetchFamilySheetFromUrl(url) {
   statusEl.textContent = 'Loading...';
   statusEl.style.color = '#666';
 
-  let csvUrl;
-  if (isPublished) {
-    csvUrl = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?output=csv&_t=${Date.now()}`;
-  } else {
-    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&_t=${Date.now()}`;
-  }
+  // Use Google Visualization API (supports cross-origin via JSONP-style)
+  // Then fall back to pub endpoint, then CORS proxy
+  const gvizUrl = isPublished
+    ? `https://docs.google.com/spreadsheets/d/e/${sheetId}/gviz/tq?tqx=out:csv&_t=${Date.now()}`
+    : `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&_t=${Date.now()}`;
+  const pubUrl = isPublished
+    ? `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?output=csv&_t=${Date.now()}`
+    : `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&_t=${Date.now()}`;
+
+  // Try multiple endpoints
+  let csvUrl = gvizUrl;
   try {
-    const resp = await fetch(csvUrl);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status} - Sheet may not be published to web`);
-    const text = await resp.text();
-    if (text.includes('<!DOCTYPE html>') || text.includes('<html')) {
-      throw new Error('Sheet is not published to web. In Google Sheets: File > Share > Publish to web > select CSV > Publish');
+    let text = null;
+    // Try gviz endpoint first, then pub endpoint
+    for (const tryUrl of [gvizUrl, pubUrl]) {
+      try {
+        const resp = await fetch(tryUrl);
+        if (resp.ok) {
+          const t = await resp.text();
+          if (!t.includes('<!DOCTYPE html>') && !t.includes('<html') && t.trim().length > 10) {
+            text = t;
+            break;
+          }
+        }
+      } catch(e) { /* try next */ }
+    }
+    if (!text) {
+      throw new Error('Could not fetch sheet. Make sure it is published to web: File > Share > Publish to web > CSV > Publish');
     }
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('No data rows found');
