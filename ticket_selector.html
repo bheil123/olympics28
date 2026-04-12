@@ -1217,10 +1217,7 @@ async function fetchFamilySheetFromUrl(url) {
       });
     }
 
-    const people = new Set(familyData.map(d => d.purchaser)).size;
-    const skipped = rows.length - headerIdx - 1 - familyData.length;
-    statusEl.textContent = `Loaded ${familyData.length} entries from ${people} people (skipped ${skipped} non-data rows)`;
-    statusEl.style.color = familyData.length > 0 ? '#28a745' : '#e65100';
+    statusEl.textContent = '';
     renderFamilyCalendarContent();
   } catch(e) {
     statusEl.textContent = 'Error: ' + e.message;
