@@ -263,6 +263,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="tab" onclick="switchTab('tracker')">Ticket Tracker</div>
       <div class="tab" onclick="switchTab('calendar')">Calendar</div>
       <div class="tab" onclick="switchTab('family')">Family Calendar</div>
+      <div class="tab" onclick="switchTab('admin')" style="margin-left:auto; font-size:0.7em; opacity:0.5;">Admin</div>
     </div>
     <div class="results-scroll">
       <div id="browseTab"></div>
@@ -270,6 +271,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div id="trackerTab" style="display:none;"></div>
       <div id="calendarTab" style="display:none;"></div>
       <div id="familyTab" style="display:none;"></div>
+      <div id="adminTab" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -807,7 +809,7 @@ function updateCounters() {
 }
 
 function switchTab(tab) {
-  const tabs = ['browse','football','tracker','calendar','family'];
+  const tabs = ['browse','football','tracker','calendar','family','admin'];
   document.querySelectorAll('.tab').forEach((t, i) => {
     t.classList.toggle('active', tabs[i] === tab);
   });
@@ -818,6 +820,7 @@ function switchTab(tab) {
   if (tab === 'tracker') renderTracker();
   if (tab === 'calendar') renderCalendar();
   if (tab === 'family') renderFamilyCalendar();
+  if (tab === 'admin') renderAdmin();
 }
 
 function renderTracker() {
@@ -1049,7 +1052,7 @@ function extractSheetId(url) {
 
 async function saveSheetEncrypted() {
   const url = document.getElementById('sheetUrl').value.trim();
-  const pass = document.getElementById('sheetPass').value.trim();
+  const pass = document.getElementById('adminPass').value.trim();
   if (!url || !pass) { alert('Enter both the Sheet URL and a passphrase'); return; }
   const encrypted = await encryptText(url, pass);
   // Save locally
@@ -1063,8 +1066,9 @@ async function saveSheetEncrypted() {
   a.click();
   URL.revokeObjectURL(a.href);
   document.getElementById('sheetUrl').value = '';
-  document.getElementById('sheetStatus').textContent = 'Encrypted! config.json downloaded - add it to your git repo so everyone can use it.';
-  document.getElementById('sheetStatus').style.color = '#28a745';
+  const statusEl = document.getElementById('adminStatus');
+  statusEl.textContent = 'Encrypted! config.json downloaded - add it to your git repo so everyone can use it.';
+  statusEl.style.color = '#28a745';
 }
 
 async function loadSheetDecrypted() {
@@ -1206,6 +1210,25 @@ async function fetchFamilySheetFromUrl(url) {
   }
 }
 
+async function renderAdmin() {
+  let html = `<div class="family-setup">
+    <h3 style="color:#1a3a5c; margin-bottom:10px;">Admin Setup</h3>
+    <div style="font-size:0.8em; color:#666; margin-bottom:10px;">
+      <strong>Step 1:</strong> In Google Sheets: File &gt; Share &gt; Publish to web &gt; CSV &gt; Publish<br>
+      <strong>Step 2:</strong> Paste the sheet URL below with a passphrase, click Save &amp; Encrypt<br>
+      <strong>Step 3:</strong> A config.json file downloads - add it to the git repo and push<br>
+      <strong>Step 4:</strong> Share the passphrase with family (verbally or text)
+    </div>
+    <label>Google Sheet URL</label>
+    <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." style="width:100%; margin-bottom:6px;">
+    <label>Passphrase</label>
+    <input type="password" id="adminPass" placeholder="Choose a family passphrase" style="width:100%; margin-bottom:6px;">
+    <button class="btn btn-warning btn-sm" onclick="saveSheetEncrypted()">Save &amp; Encrypt</button>
+    <div id="adminStatus" style="font-size:0.75em; color:#666; margin-top:6px;"></div>
+  </div>`;
+  document.getElementById('adminTab').innerHTML = html;
+}
+
 async function renderFamilyCalendar() {
   const hasEncrypted = !!(await getEncryptedSheet());
   let html = `<div class="family-setup">
@@ -1217,23 +1240,8 @@ async function renderFamilyCalendar() {
       <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()" style="height:28px;">Load Family Data</button>
     </div>
     <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:6px;">
-      ${hasEncrypted ? 'Encrypted sheet URL found. Enter passphrase and click Load.' : 'No sheet configured yet. Use setup below.'}
+      ${hasEncrypted ? 'Enter passphrase and click Load.' : 'No sheet configured yet. Ask your family admin.'}
     </div>
-
-    <details style="margin-top:10px;">
-      <summary style="font-size:0.7em; cursor:pointer; color:#aaa;">Admin Setup</summary>
-      <div style="margin-top:8px; padding:8px; background:#f8f8f8; border-radius:4px;">
-        <div style="font-size:0.75em; color:#666; margin-bottom:6px;">
-          <strong>Step 1:</strong> In Google Sheets: File &gt; Share &gt; Publish to web &gt; CSV &gt; Publish<br>
-          <strong>Step 2:</strong> Paste the sheet URL below with a passphrase, click Save &amp; Encrypt<br>
-          <strong>Step 3:</strong> A config.json file downloads - add it to the git repo and push<br>
-          <strong>Step 4:</strong> Share the passphrase with family (verbally or text)
-        </div>
-        <label style="font-size:0.75em;">Google Sheet URL</label>
-        <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." style="width:100%; margin-bottom:4px;">
-        <button class="btn btn-warning btn-sm" onclick="saveSheetEncrypted()">Save &amp; Encrypt</button>
-      </div>
-    </details>
   </div>`;
 
   html += '<div id="familyCalendarContent"></div>';
