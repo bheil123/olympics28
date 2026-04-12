@@ -1071,6 +1071,16 @@ async function saveSheetEncrypted() {
   statusEl.style.color = '#28a745';
 }
 
+function toggleRememberPass() {
+  const checked = document.getElementById('rememberPass').checked;
+  if (checked) {
+    const pass = document.getElementById('sheetPass').value.trim();
+    if (pass) localStorage.setItem('olympics28_pass', pass);
+  } else {
+    localStorage.removeItem('olympics28_pass');
+  }
+}
+
 async function loadSheetDecrypted() {
   const pass = document.getElementById('sheetPass').value.trim();
   if (!pass) { alert('Enter the family passphrase'); return; }
@@ -1078,6 +1088,10 @@ async function loadSheetDecrypted() {
   if (!encrypted) { alert('No encrypted sheet URL found. One person must first paste the URL and click "Save & Encrypt".'); return; }
   try {
     const url = await decryptText(encrypted, pass);
+    // Save passphrase if remember is checked
+    if (document.getElementById('rememberPass')?.checked) {
+      localStorage.setItem('olympics28_pass', pass);
+    }
     await fetchFamilySheetFromUrl(url);
   } catch(e) {
     document.getElementById('sheetStatus').textContent = 'Wrong passphrase or corrupted data.';
@@ -1240,6 +1254,7 @@ async function renderFamilyCalendar() {
       <div style="flex:1; min-width:200px;">
         <label>Family Passphrase</label>
         <input type="password" id="sheetPass" placeholder="Enter family passphrase" style="width:100%;">
+        <label style="font-size:0.7em; color:#888; cursor:pointer; margin-top:2px; display:block;"><input type="checkbox" id="rememberPass" onchange="toggleRememberPass()"> Remember on this device</label>
       </div>
       <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()" style="height:28px;">Load Family Data</button>
     </div>
@@ -1248,9 +1263,14 @@ async function renderFamilyCalendar() {
     </div>
   </div>`;
 
+  // Pre-fill saved passphrase
   html += '<div id="familyCalendarContent"></div>';
   document.getElementById('familyTab').innerHTML = html;
-
+  const savedPass = localStorage.getItem('olympics28_pass');
+  if (savedPass) {
+    document.getElementById('sheetPass').value = savedPass;
+    document.getElementById('rememberPass').checked = true;
+  }
   if (familyData) renderFamilyCalendarContent();
 }
 
