@@ -1003,8 +1003,14 @@ function saveSheetId(url) {
 }
 
 function extractSheetId(url) {
-  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : url; // allow pasting just the ID too
+  // Handle published URL format: /d/e/2PACX-.../pub?output=csv
+  const pubMatch = url.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
+  if (pubMatch) return { id: pubMatch[1], isPublished: true };
+  // Handle edit URL format: /d/ABC123/edit
+  const editMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (editMatch) return { id: editMatch[1], isPublished: false };
+  // Assume raw ID
+  return { id: url.trim(), isPublished: false };
 }
 
 function parseCSV(text) {
@@ -1038,12 +1044,20 @@ async function fetchFamilySheet() {
   const url = urlInput.value.trim();
   if (!url) { alert('Please paste a Google Sheet URL'); return; }
   saveSheetId(url);
-  const sheetId = extractSheetId(url);
+  const { id: sheetId, isPublished } = extractSheetId(url);
   const statusEl = document.getElementById('sheetStatus');
   statusEl.textContent = 'Loading...';
+  statusEl.style.color = '#666';
 
-  // The sheet must be published: File > Share > Publish to web > CSV
-  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&_t=${Date.now()}`;
+  // Build CSV URL based on format
+  let csvUrl;
+  if (isPublished) {
+    // Already a published URL - use it directly with csv output
+    csvUrl = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?output=csv&_t=${Date.now()}`;
+  } else {
+    // Edit URL - try the pub endpoint
+    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&_t=${Date.now()}`;
+  }
   try {
     const resp = await fetch(csvUrl);
     if (!resp.ok) throw new Error(`HTTP ${resp.status} - Sheet may not be published to web`);
@@ -1108,7 +1122,7 @@ async function fetchFamilySheet() {
 function renderFamilyCalendar() {
   const saved = getSheetId();
   let html = `<div class="family-setup">
-    <label>Google Sheet URL (Paste full URL - must be published to web)</label>
+    <label>Google Sheet URL (paste the edit URL or the published URL)</label>
     <div style="display:flex; gap:6px; margin-top:4px;">
       <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." value="${saved}" style="flex:1;">
       <button class="btn btn-primary btn-sm" onclick="fetchFamilySheet()">Load Sheet</button>
@@ -1117,7 +1131,8 @@ function renderFamilyCalendar() {
       ${saved ? 'Sheet URL saved. Click Load Sheet to refresh.' : 'Paste your Google Sheet URL and click Load Sheet.'}
     </div>
     <div style="font-size:0.7em; color:#999; margin-top:4px;">
-      Setup: In Google Sheets, go to File &gt; Share &gt; Publish to web &gt; select "Comma-separated values (.csv)" &gt; click Publish.<br>
+      <strong>Step 1:</strong> In Google Sheets: File &gt; Share &gt; Publish to web &gt; select "Comma-separated values (.csv)" &gt; Publish<br>
+      <strong>Step 2:</strong> Paste the regular sheet URL here (e.g. https://docs.google.com/spreadsheets/d/abc123/edit)<br>
       Expected columns: Event, Venue, Session Code, Date, Start, End, Total Tix, Purchaser
     </div>
   </div>`;
