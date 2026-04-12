@@ -1254,7 +1254,7 @@ async function renderFamilyCalendar() {
       <div style="flex:1; min-width:200px;">
         <label>Family Passphrase</label>
         <input type="password" id="sheetPass" placeholder="Enter family passphrase" style="width:100%;">
-        <label style="font-size:0.7em; color:#888; cursor:pointer; margin-top:2px; display:block;"><input type="checkbox" id="rememberPass" onchange="toggleRememberPass()"> Remember on this device</label>
+        <label style="font-size:0.7em; color:#888; cursor:pointer; margin-top:4px; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="rememberPass" onchange="toggleRememberPass()" style="margin:0;"> Remember on this device</label>
       </div>
       <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()" style="height:28px;">Load Family Data</button>
     </div>
