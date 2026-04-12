@@ -126,7 +126,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .cal-event .cal-time { font-weight: 700; color: #555; }
 .cal-event .cal-code { font-family: monospace; font-weight: 700; }
 
-.family-setup { background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #ddd; }
+.family-setup { background: white; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #ddd; }
 .family-setup label { font-size: 0.8em; font-weight: 600; }
 .family-setup input { padding: 4px 8px; font-size: 0.8em; border: 1px solid #ccc; border-radius: 4px; margin-top: 4px; }
 .family-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
@@ -1256,9 +1256,7 @@ async function renderFamilyCalendar() {
       <label style="font-size:0.7em; color:#888; cursor:pointer; display:flex; align-items:center; gap:3px; white-space:nowrap;"><input type="checkbox" id="rememberPass" onchange="toggleRememberPass()" style="margin:0;"> Remember</label>
       <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()">Load Family Data</button>
     </div>
-    <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:6px;">
-      ${hasEncrypted ? 'Enter passphrase and click Load.' : 'No sheet configured yet. Ask your family admin.'}
-    </div>
+    <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:4px;"></div>
   </div>`;
 
   // Pre-fill saved passphrase
