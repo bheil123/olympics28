@@ -1121,10 +1121,18 @@ async function fetchFamilySheetFromUrl(url) {
       throw new Error('Could not fetch sheet. Make sure it is published to web: File > Share > Publish to web > CSV > Publish');
     }
     const rows = parseCSV(text);
-    if (rows.length < 2) throw new Error('No data rows found');
+    if (rows.length < 2) throw new Error('No data rows found. Got ' + rows.length + ' rows. First: ' + (rows[0]||[]).join(',').substring(0,80));
 
-    // Find columns by header
-    const header = rows[0].map(h => h.toLowerCase().replace(/\s+/g, ''));
+    // Find the header row - look for a row containing "session" or "event" and "date"
+    let headerIdx = 0;
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+      const joined = rows[i].join(' ').toLowerCase();
+      if ((joined.includes('session') || joined.includes('event')) && joined.includes('date')) {
+        headerIdx = i;
+        break;
+      }
+    }
+    const header = rows[headerIdx].map(h => h.toLowerCase().replace(/\s+/g, ''));
     const findCol = (...names) => header.findIndex(h => names.some(n => h.includes(n)));
     const iEvent = findCol('event', 'sport');
     const iCode = findCol('sessioncode', 'session');
@@ -1138,7 +1146,7 @@ async function fetchFamilySheetFromUrl(url) {
     const iType = findCol('sessiontype', 'type');
 
     familyData = [];
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = headerIdx + 1; i < rows.length; i++) {
       const r = rows[i];
       if (!r[iCode] && !r[iEvent]) continue; // skip empty rows
       // Parse date - handle "Jul 15 (Sat)", "Saturday, July 15", etc.
@@ -1166,7 +1174,9 @@ async function fetchFamilySheetFromUrl(url) {
       });
     }
 
-    statusEl.textContent = `Loaded ${familyData.length} entries from ${new Set(familyData.map(d => d.purchaser)).size} people`;
+    const people = new Set(familyData.map(d => d.purchaser)).size;
+    statusEl.textContent = `Loaded ${familyData.length} entries from ${people} people (${rows.length} CSV rows, header at row ${headerIdx + 1})`;
+    statusEl.style.color = familyData.length > 0 ? '#28a745' : '#e65100';
     renderFamilyCalendarContent();
   } catch(e) {
     statusEl.textContent = 'Error: ' + e.message;
