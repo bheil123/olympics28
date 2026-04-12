@@ -1250,13 +1250,11 @@ async function renderAdmin() {
 async function renderFamilyCalendar() {
   const hasEncrypted = !!(await getEncryptedSheet());
   let html = `<div class="family-setup">
-    <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
-      <div style="flex:1; min-width:200px;">
-        <label>Family Passphrase</label>
-        <input type="password" id="sheetPass" placeholder="Enter family passphrase" style="width:100%;">
-        <label style="font-size:0.7em; color:#888; cursor:pointer; margin-top:4px; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="rememberPass" onchange="toggleRememberPass()" style="margin:0;"> Remember on this device</label>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()" style="height:28px;">Load Family Data</button>
+    <label>Family Passphrase</label>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input type="password" id="sheetPass" placeholder="Enter family passphrase" style="width:250px;">
+      <label style="font-size:0.7em; color:#888; cursor:pointer; display:flex; align-items:center; gap:3px; white-space:nowrap;"><input type="checkbox" id="rememberPass" onchange="toggleRememberPass()" style="margin:0;"> Remember</label>
+      <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()">Load Family Data</button>
     </div>
     <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:6px;">
       ${hasEncrypted ? 'Enter passphrase and click Load.' : 'No sheet configured yet. Ask your family admin.'}
