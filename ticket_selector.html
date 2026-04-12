@@ -994,23 +994,69 @@ const PERSON_COLORS = [
 
 let familyData = null;
 
-function getSheetId() {
-  return localStorage.getItem('olympics28_sheetUrl') || '';
+// === ENCRYPTION HELPERS (AES-GCM via Web Crypto API) ===
+async function deriveKey(passphrase) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode('olympics2028'), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
 }
 
-function saveSheetId(url) {
-  localStorage.setItem('olympics28_sheetUrl', url);
+async function encryptText(text, passphrase) {
+  const key = await deriveKey(passphrase);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv); combined.set(new Uint8Array(encrypted), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptText(base64, passphrase) {
+  const key = await deriveKey(passphrase);
+  const combined = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const data = combined.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+  return new TextDecoder().decode(decrypted);
+}
+
+function getEncryptedSheet() {
+  return localStorage.getItem('olympics28_sheetEnc') || '';
 }
 
 function extractSheetId(url) {
-  // Handle published URL format: /d/e/2PACX-.../pub?output=csv
   const pubMatch = url.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
   if (pubMatch) return { id: pubMatch[1], isPublished: true };
-  // Handle edit URL format: /d/ABC123/edit
   const editMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (editMatch) return { id: editMatch[1], isPublished: false };
-  // Assume raw ID
   return { id: url.trim(), isPublished: false };
+}
+
+async function saveSheetEncrypted() {
+  const url = document.getElementById('sheetUrl').value.trim();
+  const pass = document.getElementById('sheetPass').value.trim();
+  if (!url || !pass) { alert('Enter both the Sheet URL and a passphrase'); return; }
+  const encrypted = await encryptText(url, pass);
+  localStorage.setItem('olympics28_sheetEnc', encrypted);
+  document.getElementById('sheetUrl').value = '';
+  document.getElementById('sheetStatus').textContent = 'Sheet URL encrypted and saved! Others just need the passphrase to load it.';
+  document.getElementById('sheetStatus').style.color = '#28a745';
+}
+
+async function loadSheetDecrypted() {
+  const pass = document.getElementById('sheetPass').value.trim();
+  if (!pass) { alert('Enter the family passphrase'); return; }
+  const encrypted = getEncryptedSheet();
+  if (!encrypted) { alert('No encrypted sheet URL found. One person must first paste the URL and click "Save & Encrypt".'); return; }
+  try {
+    const url = await decryptText(encrypted, pass);
+    await fetchFamilySheetFromUrl(url);
+  } catch(e) {
+    document.getElementById('sheetStatus').textContent = 'Wrong passphrase or corrupted data.';
+    document.getElementById('sheetStatus').style.color = '#dc3545';
+  }
 }
 
 function parseCSV(text) {
@@ -1039,23 +1085,16 @@ function parseCSV(text) {
   return rows;
 }
 
-async function fetchFamilySheet() {
-  const urlInput = document.getElementById('sheetUrl');
-  const url = urlInput.value.trim();
-  if (!url) { alert('Please paste a Google Sheet URL'); return; }
-  saveSheetId(url);
+async function fetchFamilySheetFromUrl(url) {
   const { id: sheetId, isPublished } = extractSheetId(url);
   const statusEl = document.getElementById('sheetStatus');
   statusEl.textContent = 'Loading...';
   statusEl.style.color = '#666';
 
-  // Build CSV URL based on format
   let csvUrl;
   if (isPublished) {
-    // Already a published URL - use it directly with csv output
     csvUrl = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?output=csv&_t=${Date.now()}`;
   } else {
-    // Edit URL - try the pub endpoint
     csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv&_t=${Date.now()}`;
   }
   try {
@@ -1120,21 +1159,32 @@ async function fetchFamilySheet() {
 }
 
 function renderFamilyCalendar() {
-  const saved = getSheetId();
+  const hasEncrypted = !!getEncryptedSheet();
   let html = `<div class="family-setup">
-    <label>Google Sheet URL (paste the edit URL or the published URL)</label>
-    <div style="display:flex; gap:6px; margin-top:4px;">
-      <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." value="${saved}" style="flex:1;">
-      <button class="btn btn-primary btn-sm" onclick="fetchFamilySheet()">Load Sheet</button>
+    <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+      <div style="flex:1; min-width:200px;">
+        <label>Family Passphrase</label>
+        <input type="password" id="sheetPass" placeholder="Enter family passphrase" style="width:100%;">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="loadSheetDecrypted()" style="height:28px;">Load Family Data</button>
     </div>
-    <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:4px;">
-      ${saved ? 'Sheet URL saved. Click Load Sheet to refresh.' : 'Paste your Google Sheet URL and click Load Sheet.'}
+    <div id="sheetStatus" style="font-size:0.75em; color:#666; margin-top:6px;">
+      ${hasEncrypted ? 'Encrypted sheet URL found. Enter passphrase and click Load.' : 'No sheet configured yet. Use setup below.'}
     </div>
-    <div style="font-size:0.7em; color:#999; margin-top:4px;">
-      <strong>Step 1:</strong> In Google Sheets: File &gt; Share &gt; Publish to web &gt; select "Comma-separated values (.csv)" &gt; Publish<br>
-      <strong>Step 2:</strong> Paste the regular sheet URL here (e.g. https://docs.google.com/spreadsheets/d/abc123/edit)<br>
-      Expected columns: Event, Venue, Session Code, Date, Start, End, Total Tix, Purchaser
-    </div>
+
+    <details style="margin-top:10px;">
+      <summary style="font-size:0.8em; cursor:pointer; color:#1a3a5c; font-weight:600;">First-time Setup (one person does this)</summary>
+      <div style="margin-top:8px; padding:8px; background:#f8f8f8; border-radius:4px;">
+        <div style="font-size:0.75em; color:#666; margin-bottom:6px;">
+          <strong>Step 1:</strong> In Google Sheets: File &gt; Share &gt; Publish to web &gt; CSV &gt; Publish<br>
+          <strong>Step 2:</strong> Paste the sheet URL below with a passphrase, then click Save &amp; Encrypt<br>
+          <strong>Step 3:</strong> Share the passphrase with family (verbally or text - never in the app)
+        </div>
+        <label style="font-size:0.75em;">Google Sheet URL</label>
+        <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." style="width:100%; margin-bottom:4px;">
+        <button class="btn btn-warning btn-sm" onclick="saveSheetEncrypted()">Save &amp; Encrypt</button>
+      </div>
+    </details>
   </div>`;
 
   html += '<div id="familyCalendarContent"></div>';
